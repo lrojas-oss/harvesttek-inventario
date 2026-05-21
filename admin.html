@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harvest Tek — Dashboard Administrador</title>
+  <style>
+    :root {
+      --green:#1D9E75; --green-d:#0F6E56; --green-l:#EAF3DE;
+      --amber:#BA7517; --amber-l:#FAEEDA;
+      --red:#E24B4A; --red-l:#FCEBEB;
+      --blue:#185FA5; --blue-l:#E6F1FB;
+      --purple:#534AB7; --purple-l:#EEEDFE;
+      --gray:#5F5E5A; --gray-l:#F1EFE8;
+      --bg:#F4F3EF; --card:#FFFFFF; --text:#1a1a18; --muted:#6b6b67;
+      --border:rgba(0,0,0,0.1); --r:12px; --rs:8px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+    /* SIDEBAR */
+    .layout{display:flex;min-height:100vh;}
+    .sidebar{width:220px;background:var(--card);border-right:.5px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
+    .sb-logo{padding:20px 16px 16px;border-bottom:.5px solid var(--border);}
+    .sb-logo-row{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+    .sb-icon{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .sb-icon svg{width:16px;height:16px;stroke:white;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
+    .sb-title{font-size:13px;font-weight:700;}
+    .sb-sub{font-size:11px;color:var(--muted);}
+    .sb-badge{display:inline-block;background:var(--green-l);color:var(--green-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-top:6px;}
+    .sb-nav{padding:12px 10px;flex:1;}
+    .snav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:var(--rs);border:none;background:transparent;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;text-align:left;transition:all .15s;}
+    .snav-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+    .snav-btn:hover{background:var(--bg);color:var(--text);}
+    .snav-btn.active{background:var(--green-l);color:var(--green-d);}
+    .sb-footer{padding:12px 16px;border-top:.5px solid var(--border);}
+    .sync-status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+    .sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;}
+    .sync-dot.off{background:#f87171;}
+    .last-sync{font-size:10px;color:var(--muted);margin-top:3px;}
+
+    /* MAIN */
+    .main{flex:1;padding:28px 32px;max-width:1200px;}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap;}
+    .page-title{font-size:22px;font-weight:800;letter-spacing:-.4px;}
+    .page-sub{font-size:13px;color:var(--muted);margin-top:3px;}
+    .header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+    .btn{padding:9px 18px;border-radius:var(--rs);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;border:none;transition:all .15s;}
+    .btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
+    .btn-primary{background:var(--green);color:white;}
+    .btn-primary:hover{background:var(--green-d);}
+    .btn-secondary{background:var(--card);color:var(--text);border:.5px solid var(--border);}
+    .btn-secondary:hover{background:var(--bg);}
+    .btn-excel{background:#217346;color:white;}
+    .btn-excel:hover{background:#1a5c38;}
+
+    /* STATS */
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .stat{background:var(--card);border-radius:var(--r);padding:18px 20px;border:.5px solid var(--border);}
+    .stat-lbl{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500;}
+    .stat-val{font-size:32px;font-weight:900;letter-spacing:-.5px;}
+    .stat-val.ok{color:var(--green);} .stat-val.warn{color:var(--amber);} .stat-val.red{color:var(--red);}
+    .stat-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+    /* TABLE */
+    .table-wrap{background:var(--card);border-radius:var(--r);border:.5px solid var(--border);overflow:hidden;margin-bottom:24px;}
+    .table-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:.5px solid var(--border);gap:10px;flex-wrap:wrap;}
+    .table-title{font-size:14px;font-weight:700;}
+    .table-filters{display:flex;gap:8px;align-items:center;}
+    .tfilter{padding:6px 11px;border-radius:20px;font-size:12px;font-weight:500;border:.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer;}
+    .tfilter.active{background:var(--green);color:white;border-color:var(--green);}
+    .search-tbl{padding:7px 12px;border-radius:var(--rs);border:.5px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none;width:200px;}
+    .search-tbl:focus{border-color:var(--green);}
+
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    thead th{text-align:left;padding:9px 14px;font-size:11px;font-weight:600;color:var(--muted);border-bottom:.5px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+    tbody td{padding:10px 14px;border-bottom:.5px solid var(--border);vertical-align:middle;}
+    tbody tr:last-child td{border-bottom:none;}
+    tbody tr:hover td{background:var(--bg);}
+
+    .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+    .b-ok{background:var(--green-l);color:var(--green-d);}
+    .b-warn{background:var(--amber-l);color:var(--amber);}
+    .b-low{background:var(--red-l);color:var(--red);}
+    .b-zero{background:var(--gray-l);color:var(--gray);}
+
+    .brand-pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+
+    .min-bar{width:90px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px;}
+    .min-bar-fill{height:100%;border-radius:3px;transition:width .3s;}
+
+    /* ALERTAS */
+    .alert-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:24px;}
+    .alert-card{background:var(--card);border-radius:var(--r);padding:16px;border:.5px solid var(--border);}
+    .alert-card.red{border-left:3px solid var(--red);}
+    .alert-card.amber{border-left:3px solid var(--amber);}
+    .alert-icon{font-size:18px;margin-bottom:8px;}
+    .alert-name{font-size:13px;font-weight:700;margin-bottom:2px;}
+    .alert-brand{font-size:11px;color:var(--muted);margin-bottom:8px;}
+    .alert-detail{font-size:12px;color:var(--muted);}
+    .alert-progress{margin-top:10px;}
+    .progress-bar{width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+    .progress-fill{height:100%;border-radius:3px;}
+
+    /* HISTORIAL */
+    .hist-row{display:flex;align-items:flex-start;gap:12px;padding:12px 18px;border-bottom:.5px solid var(--border);}
+    .hist-row:last-child{border-bottom:none;}
+    .hdot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+    .hdot.entrada{background:var(--green);}
+    .hdot.salida{background:var(--amber);}
+
+    .page-content{display:none;}
+    .page-content.active{display:block;}
+
+    /* RESPONSIVE */
+    @media(max-width:900px){.stats-row{grid-template-columns:1fr 1fr;}.sidebar{display:none;}.main{padding:16px;}}
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-row">
+        <div class="sb-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div><div class="sb-title">Harvest Tek</div><div class="sb-sub">Panel Administrador</div></div>
+      </div>
+      <span class="sb-badge">Solo lectura</span>
+    </div>
+    <div class="sb-nav">
+      <button class="snav-btn active" id="snav-dashboard" onclick="showSection('dashboard')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
+      <button class="snav-btn" id="snav-inventario" onclick="showSection('inventario')">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="17" width="20" height="4" rx="1"/></svg>
+        Inventario
+      </button>
+      <button class="snav-btn" id="snav-alertas" onclick="showSection('alertas')">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alertas <span id="sb-alert-count" style="margin-left:4px;background:var(--red-l);color:var(--red);font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;display:none"></span>
+      </button>
+      <button class="snav-btn" id="snav-historial" onclick="showSection('historial')">
+        <svg viewBox="0 0 24 24"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg>
+        Historial
+      </button>
+    </div>
+    <div class="sb-footer">
+      <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-lbl">Conectando...</span></div>
+      <div class="last-sync" id="last-sync">—</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div id="sec-dashboard" class="page-content active">
+      <div class="page-header">
+        <div><div class="page-title">Dashboard</div><div class="page-sub">Vista general del inventario en tiempo real</div></div>
+        <div class="header-actions">
+          <button class="btn btn-excel" onclick="exportExcel()">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Descargar reporte
+          </button>
+          <button class="btn btn-secondary" onclick="refreshData()">
+            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Actualizar
+          </button>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-lbl">Total materiales</div><div class="stat-val" id="d-total" style="color:var(--text)">—</div><div class="stat-sub">registrados</div></div>
+        <div class="stat"><div class="stat-lbl">Stock normal</div><div class="stat-val ok" id="d-ok">—</div><div class="stat-sub">nivel adecuado</div></div>
+        <div class="stat"><div class="stat-lbl">Stock bajo / crítico</div><div class="stat-val warn" id="d-warn">—</div><div class="stat-sub">requieren atención</div></div>
+        <div class="stat"><div class="stat-lbl">Sin stock</div><div class="stat-val red" id="d-zero">—</div><div class="stat-sub">reabastecer urgente</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="table-wrap">
+          <div class="table-header"><div class="table-title">Por marca / cliente</div></div>
+          <table><thead><tr><th>Marca</th><th>Items</th><th>Sin stock</th><th>Estado</th></tr></thead><tbody id="d-brands-tbody"></tbody></table>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><div class="table-title">Alertas activas</div></div>
+          <table><thead><tr><th>Material</th><th>Stock</th><th>Mínimo</th><th>Cargas</th><th>Estado</th></tr></thead><tbody id="d-alerts-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTARIO -->
+    <div id="sec-inventario" class="page-content">
+      <div class="page-header">
+        <div><div class="page-title">Inventario completo</div><div class="page-sub">47 materiales de empaque · datos en tiempo real</div></div>
+        <div class="header-actions">
+          <button class="btn btn-excel" onclick="exportExcel()">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Exportar Excel
+          </button>
+          <button class="btn btn-secondary" onclick="exportCSV()">CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-title">Materiales</div>
+          <div class="table-filters">
+            <input class="search-tbl" id="tbl-srch" placeholder="Buscar..." oninput="renderTable()">
+            <select class="search-tbl" id="tbl-brand" onchange="renderTable()" style="width:160px">
+              <option value="">Todas las marcas</option>
+              <option>Family Fresh Farms</option>
+              <option>Ocean Mist</option>
+              <option>Baolian Farms</option>
+              <option>Fresh Express</option>
+              <option>General</option>
+            </select>
+            <button class="tfilter active" id="tf-all" onclick="setTF(this,'all')">Todos</button>
+            <button class="tfilter" id="tf-alert" onclick="setTF(this,'alert')">Con alerta</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Descripción</th><th>Marca</th><th>Stock actual</th><th>Stock mínimo</th><th>Uds/carga</th><th>Cargas disponibles</th><th>Estado</th></tr></thead>
+          <tbody id="inv-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div id="sec-alertas" class="page-content">
+      <div class="page-header">
+        <div><div class="page-title">Alertas de stock</div><div class="page-sub" id="alrt-sub">Cargando...</div></div>
+        <button class="btn btn-excel" onclick="exportAlertsExcel()">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Exportar alertas
+        </button>
+      </div>
+      <div class="alert-grid" id="alert-grid"></div>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div id="sec-historial" class="page-content">
+      <div class="page-header">
+        <div><div class="page-title">Historial de movimientos</div><div class="page-sub">Todas las entradas y salidas registradas</div></div>
+        <button class="btn btn-excel" onclick="exportHistExcel()">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Exportar historial
+        </button>
+      </div>
+      <div class="table-wrap">
+        <div id="hist-tbody" style="max-height:600px;overflow-y:auto;"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+// ─── MISMA CONFIG QUE EN almacen.html ──────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAOWLSm4R543YvJJXnzsF_FWXxi6F-56lk",
+  authDomain: "harvesttek-inventario.firebaseapp.com",
+  databaseURL: "https://harvesttek-inventario-default-rtdb.firebaseio.com",
+  projectId: "harvesttek-inventario",
+  storageBucket: "harvesttek-inventario.firebasestorage.app",
+  messagingSenderId: "28359230262",
+  appId: "1:28359230262:web:3feef6298da57610de6997"
+};
+// ────────────────────────────────────────────────────────────────────────────
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+onValue(ref(db, 'inventory'), snap => {
+  const data = snap.val();
+  window.inventory = data ? Object.values(data) : [];
+  setSyncStatus(true);
+  renderAll();
+}, err => {
+  setSyncStatus(false);
+  console.warn('Firebase offline', err);
+});
+
+onValue(ref(db, 'historial'), snap => {
+  const data = snap.val();
+  window.historial = data ? Object.values(data).sort((a,b) => (a.ts||0) - (b.ts||0)) : [];
+  renderHist();
+});
+
+window.refreshData = function() {
+  document.getElementById('sync-lbl').textContent = 'Actualizando...';
+  setTimeout(() => setSyncStatus(true), 800);
+};
+</script>
+
+<!-- SheetJS for Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+window.inventory = [];
+window.historial = [];
+let tblFilter = 'all';
+let activeSection = 'dashboard';
+
+const brandC = {'Family Fresh Farms':'#3B6D11','Ocean Mist':'#185FA5','Baolian Farms':'#534AB7','Fresh Express':'#854F0B','General':'#5F5E5A'};
+const brandBg = {'Family Fresh Farms':'#EAF3DE','Ocean Mist':'#E6F1FB','Baolian Farms':'#EEEDFE','Fresh Express':'#FAEEDA','General':'#F1EFE8'};
+
+function st(item) {
+  if (item.qty === 0) return 'zero';
+  if (item.min > 0 && item.qty < item.min) return 'low';
+  if (item.min > 0 && item.qty < item.min * 1.3) return 'warn';
+  return 'ok';
+}
+function stLabel(s) { return {ok:'Normal',warn:'Por agotarse',low:'Stock bajo',zero:'Sin stock'}[s]; }
+function stClass(s) { return {ok:'b-ok',warn:'b-warn',low:'b-low',zero:'b-zero'}[s]; }
+
+function setSyncStatus(online) {
+  document.getElementById('sync-dot').className = 'sync-dot' + (online ? '' : ' off');
+  document.getElementById('sync-lbl').textContent = online ? 'Sincronizado' : 'Sin conexión';
+  document.getElementById('last-sync').textContent = online ? 'Actualizado: ' + new Date().toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '—';
+}
+
+function renderAll() {
+  const inv = window.inventory;
+  const alerts = inv.filter(i => ['zero','low','warn'].includes(st(i)));
+
+  // Sidebar alert count
+  const sac = document.getElementById('sb-alert-count');
+  sac.textContent = alerts.length;
+  sac.style.display = alerts.length > 0 ? 'inline' : 'none';
+
+  // Stats
+  document.getElementById('d-total').textContent = inv.length;
+  document.getElementById('d-ok').textContent = inv.filter(i => st(i) === 'ok').length;
+  document.getElementById('d-warn').textContent = inv.filter(i => ['warn','low'].includes(st(i))).length;
+  document.getElementById('d-zero').textContent = inv.filter(i => st(i) === 'zero').length;
+
+  // Brands table
+  const brands = {};
+  inv.forEach(i => { if (!brands[i.brand]) brands[i.brand] = []; brands[i.brand].push(i); });
+  document.getElementById('d-brands-tbody').innerHTML = Object.entries(brands).map(([b, items]) => {
+    const z = items.filter(i => st(i) === 'zero').length;
+    const a = items.filter(i => ['zero','low','warn'].includes(st(i))).length;
+    return `<tr>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${brandBg[b]||'#eee'};color:${brandC[b]||'#666'}">${b}</span></td>
+      <td>${items.length}</td>
+      <td style="color:${z>0?'var(--red)':'var(--muted)'};font-weight:${z>0?'700':'400'}">${z}</td>
+      <td><span class="badge ${a>0?'b-low':'b-ok'}">${a>0?a+' alerta'+(a>1?'s':''):'Normal'}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Alerts summary table
+  document.getElementById('d-alerts-tbody').innerHTML = alerts.length
+    ? alerts.slice(0,8).map(i => `<tr>
+        <td style="font-size:12px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.desc}</td>
+        <td style="font-weight:700">${i.qty}</td>
+        <td style="color:var(--muted)">${i.min || '—'}</td>
+        <td style="font-weight:700;color:var(--blue)">${i.upc > 0 ? (i.qty/i.upc).toFixed(1)+' 🔄' : '—'}</td>
+        <td><span class="badge ${stClass(st(i))}">${stLabel(st(i))}</span></td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Sin alertas activas</td></tr>';
+
+  renderTable();
+  renderAlerts();
+}
+
+function renderTable() {
+  const srch = (document.getElementById('tbl-srch').value || '').toLowerCase();
+  const brand = document.getElementById('tbl-brand').value;
+  let filtered = window.inventory.filter(i =>
+    (!brand || i.brand === brand) &&
+    (i.desc.toLowerCase().includes(srch) || i.brand.toLowerCase().includes(srch))
+  );
+  if (tblFilter === 'alert') filtered = filtered.filter(i => ['zero','low','warn'].includes(st(i)));
+
+  document.getElementById('inv-tbody').innerHTML = filtered.map(item => {
+    const s = st(item);
+    const cargas = item.upc > 0 ? (item.qty / item.upc) : null;
+    const cargasColor = cargas === null ? 'var(--muted)' : cargas < 1 ? 'var(--red)' : cargas < 2 ? 'var(--amber)' : 'var(--blue)';
+    const pct = item.min > 0 ? Math.min(100, Math.round(item.qty / item.min * 100)) : null;
+    const barColor = s === 'ok' ? '#1D9E75' : s === 'warn' ? '#BA7517' : '#E24B4A';
+    return `<tr>
+      <td style="font-weight:600;max-width:240px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.desc}</div></td>
+      <td><span style="display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:${brandBg[item.brand]||'#eee'};color:${brandC[item.brand]||'#666'}">${item.brand}</span></td>
+      <td style="font-weight:700;font-size:15px">${item.qty.toLocaleString()}</td>
+      <td style="color:var(--muted)">${item.min > 0 ? item.min.toLocaleString() : '—'}</td>
+      <td style="color:var(--muted);font-size:12px">${item.upc > 0 ? item.upc.toLocaleString() : '—'}</td>
+      <td>
+        ${cargas !== null
+          ? `<div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px;font-weight:800;color:${cargasColor}">${cargas.toFixed(1)}</span>
+              <div>
+                <div style="width:70px;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${Math.min(100,cargas/5*100)}%;background:${cargasColor};border-radius:3px"></div>
+                </div>
+                <div style="font-size:10px;color:var(--muted);margin-top:2px">${item.upc.toLocaleString()} uds/carga</div>
+              </div>
+            </div>`
+          : pct !== null
+            ? `<div style="display:flex;align-items:center;gap:6px">
+                <div style="width:70px;height:5px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px"></div></div>
+                <span style="font-size:11px;color:var(--muted)">${pct}%</span>
+               </div>`
+            : '<span style="color:var(--muted);font-size:12px">—</span>'
+        }
+      </td>
+      <td><span class="badge ${stClass(s)}">${stLabel(s)}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Sin resultados</td></tr>';
+}
+
+function renderAlerts() {
+  const alerts = window.inventory.filter(i => ['zero','low','warn'].includes(st(i)));
+  document.getElementById('alrt-sub').textContent = alerts.length
+    ? `${alerts.length} material${alerts.length>1?'es':''} requieren atención`
+    : 'Sin alertas activas';
+  document.getElementById('alert-grid').innerHTML = alerts.length
+    ? alerts.map(item => {
+        const s = st(item);
+        const icon = s === 'zero' ? '⛔' : s === 'low' ? '🔴' : '⚠️';
+        const pct = item.min > 0 ? Math.min(100, Math.round(item.qty / item.min * 100)) : 0;
+        const barColor = s === 'low' || s === 'zero' ? '#E24B4A' : '#BA7517';
+        return `<div class="alert-card ${s === 'warn' ? 'amber' : 'red'}">
+          <div class="alert-icon">${icon}</div>
+          <div class="alert-name">${item.desc}</div>
+          <div class="alert-brand">${item.brand}</div>
+          <div class="alert-detail">
+            Stock actual: <strong>${item.qty}</strong> · Mínimo: <strong>${item.min || '—'}</strong>
+          </div>
+          ${item.min > 0 ? `<div class="alert-progress">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">
+              <span>Cobertura</span><span>${pct}%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
+          </div>` : ''}
+        </div>`;
+      }).join('')
+    : '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="font-size:14px">Sin alertas activas. Todo el inventario está en orden.</div></div>';
+}
+
+function renderHist() {
+  const h = window.historial;
+  const el = document.getElementById('hist-tbody');
+  if (!h.length) { el.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--muted);font-size:14px">Sin movimientos registrados aún.</div>'; return; }
+  el.innerHTML = [...h].reverse().map(m => `
+    <div class="hist-row">
+      <div class="hdot ${m.tipo}" style="margin-top:5px"></div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${m.desc}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${m.brand}${m.nota ? ' · ' + m.nota : ''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:${m.tipo==='entrada'?'var(--green)':'var(--red)'}">${m.tipo==='entrada'?'+':'-'}${m.qty.toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${m.fecha}</div>
+      </div>
+    </div>`).join('');
+}
+
+function setTF(el, val) {
+  document.querySelectorAll('.tfilter').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  tblFilter = val;
+  renderTable();
+}
+
+function showSection(s) {
+  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.snav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + s).classList.add('active');
+  document.getElementById('snav-' + s).classList.add('active');
+  if (s === 'alertas') renderAlerts();
+  if (s === 'historial') renderHist();
+}
+
+// ── EXCEL EXPORTS ──────────────────────────────────────────────────────────
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+  const today = new Date().toLocaleDateString('es-MX');
+
+  // Sheet 1: Inventario completo
+  const invData = [
+    ['REPORTE DE INVENTARIO — HARVEST TEK MÉXICO'],
+    [`Generado: ${today}`],
+    [],
+    ['ID','Descripción','Marca','Stock actual','Stock mínimo','Uds por carga','Cargas disponibles','Estado'],
+    ...window.inventory.map(i => {
+      const s = st(i);
+      const pct = i.min > 0 ? Math.round(i.qty / i.min * 100) : '';
+      const cargas = i.upc > 0 ? parseFloat((i.qty/i.upc).toFixed(2)) : '';
+      return [i.id, i.desc, i.brand, i.qty, i.min || 0, i.upc || 0, cargas, stLabel(s)];
+    })
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(invData);
+  ws1['!cols'] = [{wch:5},{wch:45},{wch:22},{wch:14},{wch:14},{wch:14},{wch:18},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Inventario');
+
+  // Sheet 2: Alertas
+  const alertItems = window.inventory.filter(i => ['zero','low','warn'].includes(st(i)));
+  const alertData = [
+    ['ALERTAS DE STOCK — HARVEST TEK MÉXICO'],
+    [`Generado: ${today}`],
+    [],
+    ['Descripción','Marca','Stock actual','Stock mínimo','Déficit','Estado'],
+    ...alertItems.map(i => {
+      const s = st(i);
+      const deficit = i.min > 0 ? Math.max(0, i.min - i.qty) : 0;
+      return [i.desc, i.brand, i.qty, i.min || 0, deficit, stLabel(s)];
+    })
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet(alertData);
+  ws2['!cols'] = [{wch:45},{wch:22},{wch:14},{wch:14},{wch:12},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Alertas');
+
+  // Sheet 3: Entradas detalladas
+  const entradas = window.historial.filter(m => m.tipo === 'entrada');
+  const entData = [
+    ['ENTRADAS DE INVENTARIO — HARVEST TEK MÉXICO'],
+    [`Generado: ${new Date().toLocaleDateString('es-MX')}`],
+    [],
+    ['Fecha','Marca','Descripción','Tipo entrada','Cantidad','Proveedor','No. Factura','Nota'],
+    ...entradas.map(m => [
+      m.fecha, m.brand, m.desc,
+      m.subtipo === 'retorno' ? 'Retorno de producción' : 'Compra',
+      m.qty,
+      m.proveedor || '',
+      m.factura || '',
+      m.nota || ''
+    ])
+  ];
+  const ws3 = XLSX.utils.aoa_to_sheet(entData);
+  ws3['!cols'] = [{wch:12},{wch:22},{wch:42},{wch:22},{wch:12},{wch:28},{wch:18},{wch:28}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Entradas');
+
+  XLSX.writeFile(wb, `HarvestTek_Inventario_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+function exportAlertsExcel() {
+  const wb = XLSX.utils.book_new();
+  const today = new Date().toLocaleDateString('es-MX');
+  const alertItems = window.inventory.filter(i => ['zero','low','warn'].includes(st(i)));
+  const data = [
+    ['ALERTAS DE STOCK — HARVEST TEK MÉXICO'],
+    [`Generado: ${today}`],
+    ['Total alertas: ' + alertItems.length],
+    [],
+    ['Descripción','Marca','Stock actual','Stock mínimo','Déficit','Estado','Prioridad'],
+    ...alertItems.map(i => {
+      const s = st(i);
+      const deficit = i.min > 0 ? Math.max(0, i.min - i.qty) : '—';
+      const priority = s === 'zero' ? 'URGENTE' : s === 'low' ? 'ALTA' : 'MEDIA';
+      return [i.desc, i.brand, i.qty, i.min || 0, deficit, stLabel(s), priority];
+    })
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:45},{wch:22},{wch:14},{wch:14},{wch:12},{wch:16},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Alertas');
+  XLSX.writeFile(wb, `HarvestTek_Alertas_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+function exportHistExcel() {
+  const wb = XLSX.utils.book_new();
+  const data = [
+    ['HISTORIAL DE MOVIMIENTOS — HARVEST TEK MÉXICO'],
+    [`Generado: ${new Date().toLocaleDateString('es-MX')}`],
+    [],
+    ['Fecha','Marca','Descripción','Tipo','Subtipo','Cantidad','Proveedor','No. Factura','Nota'],
+    ...window.historial.map(m => [m.fecha, m.brand, m.desc, m.tipo.toUpperCase(), m.subtipo === 'retorno' ? 'Retorno' : m.tipo === 'entrada' ? 'Compra' : 'Salida', m.qty, m.proveedor||'', m.factura||'', m.nota || ''])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:12},{wch:22},{wch:45},{wch:10},{wch:12},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Historial');
+  XLSX.writeFile(wb, `HarvestTek_Historial_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+function exportCSV() {
+  const rows = [['ID','Descripcion','Marca','Stock','Minimo','Estado']];
+  window.inventory.forEach(i => rows.push([i.id, `"${i.desc}"`, `"${i.brand}"`, i.qty, i.min||0, stLabel(st(i))]));
+  const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = `HarvestTek_Inventario_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1D9E75">
+  <title>Harvest Tek — Inventario</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #F4F3EF; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .card {
+      background: white; border-radius: 16px; padding: 36px 32px;
+      border: 0.5px solid rgba(0,0,0,0.1); max-width: 400px; width: 100%;
+      text-align: center;
+    }
+    .logo {
+      width: 56px; height: 56px; background: #1D9E75; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+    }
+    .logo svg { width: 28px; height: 28px; stroke: white; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    h1 { font-size: 20px; font-weight: 800; color: #1a1a18; margin-bottom: 4px; }
+    p { font-size: 13px; color: #6b6b67; margin-bottom: 28px; }
+    .btns { display: flex; flex-direction: column; gap: 10px; }
+    .btn {
+      display: block; padding: 14px 20px; border-radius: 10px;
+      font-size: 14px; font-weight: 700; text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn-almacen { background: #1D9E75; color: white; }
+    .btn-admin { background: white; color: #1a1a18; border: 1px solid rgba(0,0,0,0.12); }
+    .btn-sub { font-size: 11px; font-weight: 400; opacity: 0.75; display: block; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
+    <h1>Harvest Tek México</h1>
+    <p>Sistema de inventario de materiales de empaque</p>
+    <div class="btns">
+      <a class="btn btn-almacen" href="./almacen.html">
+        📦 App Almacenista
+        <span class="btn-sub">Celular · Tablet · Instalar como app</span>
+      </a>
+      <a class="btn btn-admin" href="./admin.html">
+        🖥️ Dashboard Administrador
+        <span class="btn-sub">PC · Navegador · Solo lectura + reportes</span>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
