@@ -12,6 +12,7 @@
   <!-- Firebase compat (no import/export needed) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <!-- QR Scanner & Generator loaded async so they never block the app -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
@@ -258,12 +259,37 @@
     .salida-total-box{display:flex;align-items:center;justify-content:space-between;background:var(--green-l);border-radius:var(--rs);padding:8px 12px;margin-bottom:12px;}
     .salida-total-lbl{font-size:12px;font-weight:600;color:var(--green-d);}
     .salida-total-val{font-size:20px;font-weight:800;color:var(--green-d);}
+
+    /* GOOGLE AUTH GATE */
+    #google-gate{position:fixed;inset:0;background:var(--green);display:flex;align-items:center;justify-content:center;padding:24px;z-index:1000;}
+    .google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border-radius:var(--rs);border:none;background:white;color:#3c4043;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.18);margin-top:18px;}
+    .google-btn:active{opacity:.85;}
+    #gauth-err{font-size:12px;color:rgba(255,255,255,.9);text-align:center;margin-top:10px;background:rgba(0,0,0,.18);border-radius:var(--rs);padding:8px;display:none;}
   </style>
 </head>
 <body>
 
+<!-- GOOGLE AUTH GATE -->
+<div id="google-gate">
+  <div class="lcard">
+    <div class="llogo"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+    <div class="ltitle">HT Almacén</div>
+    <div class="lsub">Harvest Tek México</div>
+    <button class="google-btn" onclick="googleSignIn()" type="button">
+      <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Iniciar sesión con Google
+    </button>
+    <div id="gauth-err"></div>
+  </div>
+</div>
+
 <!-- LOGIN -->
-<div id="login-screen">
+<div id="login-screen" style="display:none">
   <div class="lcard">
     <div class="llogo"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
     <div class="ltitle">HT Almacén</div>
@@ -496,11 +522,48 @@ var lotesCache = {};
 var brandC = {'Family Fresh Farms':'#3B6D11','Ocean Mist':'#185FA5','Baolian Farms':'#534AB7','Fresh Express':'#854F0B','General':'#5F5E5A'};
 
 // ── FIREBASE ──────────────────────────────────────────────────────────────────
+function isAllowedEmail(e){
+  if(!e) return false;
+  var l=e.toLowerCase();
+  return l.endsWith('@harvesttekmex.com')||l.endsWith('@sfcos.com')||l==='rojaslumi7@gmail.com';
+}
+function showGoogleGate(){
+  document.getElementById('google-gate').style.display='flex';
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('main-app').style.display='none';
+  document.getElementById('bnav').style.display='none';
+  document.getElementById('fab').style.display='none';
+}
+function googleSignIn(){
+  var provider=new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).catch(function(){
+    var e=document.getElementById('gauth-err');
+    e.textContent='Error al iniciar sesión. Intenta de nuevo.';
+    e.style.display='block';
+  });
+}
+
 (function(){
   try {
-    if(typeof firebase === 'undefined'){ setSS(false); return; }
+    if(typeof firebase === 'undefined'){ setSS(false); showGoogleGate(); return; }
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
+
+    firebase.auth().onAuthStateChanged(function(user){
+      if(!user){ showGoogleGate(); return; }
+      var email=(user.email||'').toLowerCase();
+      if(!isAllowedEmail(email)){
+        var err=document.getElementById('gauth-err');
+        err.textContent='Acceso restringido. Solo usuarios de Harvest Tek y SFCOS.';
+        err.style.display='block';
+        firebase.auth().signOut();
+        return;
+      }
+      document.getElementById('google-gate').style.display='none';
+      document.getElementById('gauth-err').style.display='none';
+      document.getElementById('login-screen').style.display='flex';
+    });
+
     db.ref('inventory').on('value', function(s){
       var d = s.val();
       if (d) {
@@ -532,7 +595,7 @@ var brandC = {'Family Fresh Farms':'#3B6D11','Ocean Mist':'#185FA5','Baolian Far
       hist = d ? Object.values(d).sort(function(a,b){return(a.ts||0)-(b.ts||0);}) : [];
       localStorage.setItem('ht_hist', JSON.stringify(hist));
     });
-  } catch(e){ setSS(false); }
+  } catch(e){ setSS(false); showGoogleGate(); }
 })();
 
 function saveInv(x){ try{ if(db){ var data={}; Object.keys(x).forEach(function(k){if(k!=='lotes')data[k]=x[k];}); db.ref('inventory/'+x.id).update(data); } }catch(e){} localStorage.setItem('ht_inv',JSON.stringify(inv)); }
@@ -580,7 +643,6 @@ function doLogin(){
 function doLogout(){
   role=null; selRole=null;
   localStorage.removeItem('ht_role');
-  document.getElementById('login-screen').style.display='flex';
   document.getElementById('main-app').style.display='none';
   document.getElementById('bnav').style.display='none';
   document.getElementById('fab').style.display='none';
@@ -589,6 +651,7 @@ function doLogout(){
   document.getElementById('pin-section').style.display='none';
   document.getElementById('rbadge').textContent='';
   document.querySelectorAll('.rbtn').forEach(function(b){b.classList.remove('sel');});
+  try{ firebase.auth().signOut(); }catch(e){ showGoogleGate(); }
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────────

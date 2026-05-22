@@ -138,30 +138,43 @@
     /* RESPONSIVE */
     @media(max-width:900px){.stats-row{grid-template-columns:1fr 1fr;}.sidebar{display:none;}.main{padding:16px;}}
 
-    /* LOGIN GATE */
+    /* AUTH GATE */
     #admin-gate{position:fixed;inset:0;background:var(--green);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;}
     .gate-card{background:var(--card);border-radius:20px;padding:32px 28px;width:100%;max-width:340px;text-align:center;}
     .gate-icon{width:52px;height:52px;background:var(--green);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
     .gate-icon svg{width:24px;height:24px;stroke:white;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
     .gate-title{font-size:18px;font-weight:800;margin-bottom:4px;}
     .gate-sub{font-size:12px;color:var(--muted);margin-bottom:22px;}
-    .gate-input{width:100%;padding:12px;border-radius:var(--rs);border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:22px;font-weight:700;letter-spacing:8px;text-align:center;outline:none;font-family:inherit;margin-bottom:12px;}
-    .gate-input:focus{border-color:var(--green);}
-    .gate-btn{width:100%;padding:13px;border-radius:var(--rs);border:none;background:var(--green);color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
-    .gate-btn:active{opacity:.85;}
-    .gate-err{font-size:12px;color:var(--red);margin-top:8px;min-height:16px;}
+    .gate-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border-radius:var(--rs);border:none;background:white;color:#3c4043;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.18);border:.5px solid rgba(0,0,0,.12);}
+    .gate-google-btn:active{opacity:.85;}
+    .gate-err{font-size:12px;color:var(--red);margin-top:10px;min-height:16px;display:none;}
+    /* USER INFO IN SIDEBAR */
+    .sb-user{padding:10px 16px 4px;border-top:.5px solid var(--border);display:none;}
+    .sb-email{font-size:11px;color:var(--muted);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .sb-signout{width:100%;padding:7px;border-radius:var(--rs);border:.5px solid var(--border);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;}
+    .sb-signout:hover{background:var(--red-l);color:var(--red);border-color:var(--red);}
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
 
 <!-- ADMIN ACCESS GATE -->
 <div id="admin-gate">
   <div class="gate-card">
-    <div class="gate-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+    <div class="gate-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
     <div class="gate-title">Harvest Tek</div>
-    <div class="gate-sub">Panel Administrador — Ingresa el PIN</div>
-    <input id="gate-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" class="gate-input" onkeydown="if(event.key==='Enter')checkGate()">
-    <button class="gate-btn" onclick="checkGate()">Acceder</button>
+    <div class="gate-sub">Panel Administrador</div>
+    <button class="gate-google-btn" onclick="adminGoogleSignIn()" type="button">
+      <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Iniciar sesión con Google
+    </button>
     <div class="gate-err" id="gate-err"></div>
   </div>
 </div>
@@ -194,6 +207,10 @@
         <svg viewBox="0 0 24 24"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg>
         Historial
       </button>
+    </div>
+    <div class="sb-user" id="sb-user">
+      <div class="sb-email" id="sb-email"></div>
+      <button class="sb-signout" onclick="adminSignOut()" type="button">Cerrar sesión</button>
     </div>
     <div class="sb-footer">
       <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-lbl">Conectando...</span></div>
@@ -303,54 +320,70 @@
 </div>
 
 <!-- Firebase -->
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+<script>
+(function(){
+  if(typeof firebase === 'undefined') return;
+  var firebaseConfig = {
+    apiKey: "AIzaSyAOWLSm4R543YvJJXnzsF_FWXxi6F-56lk",
+    authDomain: "harvesttek-inventario.firebaseapp.com",
+    databaseURL: "https://harvesttek-inventario-default-rtdb.firebaseio.com",
+    projectId: "harvesttek-inventario",
+    storageBucket: "harvesttek-inventario.firebasestorage.app",
+    messagingSenderId: "28359230262",
+    appId: "1:28359230262:web:3feef6298da57610de6997"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.database();
 
-// ─── MISMA CONFIG QUE EN almacen.html ──────────────────────────────────────
-const firebaseConfig = {
-  apiKey: "AIzaSyAOWLSm4R543YvJJXnzsF_FWXxi6F-56lk",
-  authDomain: "harvesttek-inventario.firebaseapp.com",
-  databaseURL: "https://harvesttek-inventario-default-rtdb.firebaseio.com",
-  projectId: "harvesttek-inventario",
-  storageBucket: "harvesttek-inventario.firebasestorage.app",
-  messagingSenderId: "28359230262",
-  appId: "1:28359230262:web:3feef6298da57610de6997"
-};
-// ────────────────────────────────────────────────────────────────────────────
+  firebase.auth().onAuthStateChanged(function(user){
+    if(!user){
+      document.getElementById('admin-gate').style.display='flex';
+      document.getElementById('sb-user').style.display='none';
+      return;
+    }
+    var email=(user.email||'').toLowerCase();
+    var allowed=email.endsWith('@harvesttekmex.com')||email.endsWith('@sfcos.com')||email==='rojaslumi7@gmail.com';
+    if(!allowed){
+      var err=document.getElementById('gate-err');
+      err.textContent='Acceso restringido. Solo usuarios de Harvest Tek y SFCOS.';
+      err.style.display='block';
+      firebase.auth().signOut();
+      return;
+    }
+    document.getElementById('admin-gate').style.display='none';
+    document.getElementById('gate-err').style.display='none';
+    document.getElementById('sb-user').style.display='flex';
+    document.getElementById('sb-user').style.flexDirection='column';
+    document.getElementById('sb-email').textContent=user.email;
+  });
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+  db.ref('inventory').on('value', function(snap){
+    var data=snap.val();
+    if(data){
+      window.lotesData={};
+      window.inventory=Object.values(data).map(function(item){
+        if(item.lotes) window.lotesData[item.id]=item.lotes;
+        var clean=Object.assign({},item); delete clean.lotes; return clean;
+      });
+    } else {
+      window.inventory=[];
+      window.lotesData={};
+    }
+    setSyncStatus(true);
+    renderAll();
+  }, function(){ setSyncStatus(false); });
 
-onValue(ref(db, 'inventory'), snap => {
-  const data = snap.val();
-  if (data) {
-    window.lotesData = {};
-    window.inventory = Object.values(data).map(item => {
-      if (item.lotes) window.lotesData[item.id] = item.lotes;
-      const clean = {...item}; delete clean.lotes; return clean;
-    });
-  } else {
-    window.inventory = [];
-    window.lotesData = {};
-  }
-  setSyncStatus(true);
-  renderAll();
-}, err => {
-  setSyncStatus(false);
-  console.warn('Firebase offline', err);
-});
+  db.ref('historial').on('value', function(snap){
+    var data=snap.val();
+    window.historial=data?Object.values(data).sort(function(a,b){return(a.ts||0)-(b.ts||0);}):[];
+    renderHist();
+  });
 
-onValue(ref(db, 'historial'), snap => {
-  const data = snap.val();
-  window.historial = data ? Object.values(data).sort((a,b) => (a.ts||0) - (b.ts||0)) : [];
-  renderHist();
-});
-
-window.refreshData = function() {
-  document.getElementById('sync-lbl').textContent = 'Actualizando...';
-  setTimeout(() => setSyncStatus(true), 800);
-};
+  window.refreshData=function(){
+    document.getElementById('sync-lbl').textContent='Actualizando...';
+    setTimeout(function(){ setSyncStatus(true); },800);
+  };
+})();
 </script>
 
 <!-- SheetJS for Excel export -->
@@ -364,25 +397,18 @@ let tblFilter = 'all';
 let activeSection = 'dashboard';
 let expandedAdminRow = null;
 
-// ── ADMIN ACCESS GATE ────────────────────────────────────────────────────────
-const ADMIN_PIN = '1234';
-function checkGate() {
-  const v = document.getElementById('gate-pin').value;
-  if (v === ADMIN_PIN) {
-    document.getElementById('admin-gate').style.display = 'none';
-    sessionStorage.setItem('ht_admin_ok', '1');
-  } else {
-    document.getElementById('gate-err').textContent = 'PIN incorrecto';
-    document.getElementById('gate-pin').value = '';
-  }
+// ── ADMIN GOOGLE AUTH ────────────────────────────────────────────────────────
+function adminGoogleSignIn(){
+  var provider=new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).catch(function(){
+    var err=document.getElementById('gate-err');
+    err.textContent='Error al iniciar sesión. Intenta de nuevo.';
+    err.style.display='block';
+  });
 }
-(function() {
-  if (sessionStorage.getItem('ht_admin_ok') === '1') {
-    document.getElementById('admin-gate').style.display = 'none';
-  } else {
-    setTimeout(() => document.getElementById('gate-pin').focus(), 100);
-  }
-})();
+function adminSignOut(){
+  firebase.auth().signOut();
+}
 
 function toggleAdminRow(id) {
   expandedAdminRow = expandedAdminRow === id ? null : id;
