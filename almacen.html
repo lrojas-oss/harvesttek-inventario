@@ -543,6 +543,7 @@ function updateLote(itemId,loteId,newQty){ try{ if(db){ if(newQty<=0) db.ref('in
 function getLotesSorted(itemId){ var lotes=lotesCache[itemId]||{}; return Object.keys(lotes).map(function(k){return Object.assign({key:k},lotes[k]);}).filter(function(l){return(l.qty||0)>0;}).sort(function(a,b){return(a.ts||0)-(b.ts||0);}); }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
+function esc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 function st(x){ if(x.qty===0)return'zero'; if(x.min>0&&x.qty<x.min)return'low'; if(x.min>0&&x.qty<x.min*1.3)return'warn'; return'ok'; }
 function stL(s){ return{ok:'Normal',warn:'Por agotarse',low:'Stock bajo',zero:'Sin stock'}[s]; }
 function setSS(on){ var d=document.getElementById('sdot'); var l=document.getElementById('slbl'); if(!d)return; d.className='sdot'+(on?'':' off'); l.textContent=on?'En línea':'Sin conexión'; }
@@ -637,12 +638,12 @@ function renderInv(){
           if(sl.length>0){
             lotesHtml='<div class="ilotes"><div class="ilotes-title">Lotes disponibles ('+sl.length+')</div>'+
               sl.map(function(l,i){
-                var meta=(l.proveedor?l.proveedor:'')+(l.factura?' · '+l.factura:'');
+                var meta=(l.proveedor?esc(l.proveedor):'')+(l.factura?' · '+esc(l.factura):'');
                 var printBtn=isJ
                   ?'<button onclick="reprintLote('+x.id+',\''+l.key+'\')" type="button" title="Re-imprimir etiqueta" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:4px 7px;color:var(--muted);font-size:13px;flex-shrink:0;line-height:1">🖨</button>'
                   :'';
                 return '<div class="ilote-row"><div class="ilote-bar"></div>'+
-                  '<div style="flex:1"><div class="ilote-fecha">'+l.fecha.split(' ')[0]+'</div>'+(meta?'<div class="ilote-meta">'+meta+'</div>':'')+'</div>'+
+                  '<div style="flex:1"><div class="ilote-fecha">'+esc(l.fecha.split(' ')[0])+'</div>'+(meta?'<div class="ilote-meta">'+meta+'</div>':'')+'</div>'+
                   '<div style="font-size:15px;font-weight:800;color:var(--green);margin-right:6px">'+l.qty.toLocaleString()+'</div>'+
                   printBtn+'</div>';
               }).join('')+
@@ -654,7 +655,7 @@ function renderInv(){
         h+='<div class="icard">'+
           photoHtml+'<div class="imain" onclick="toggleCard('+x.id+')">'+
             '<div class="sdot2 '+dc+'"></div>'+
-            '<div style="flex:1;min-width:0"><div class="iname">'+x.desc+'</div><div class="ibrand">'+x.brand+'</div><span class="ibadge '+bc+'">'+stL(s2)+'</span></div>'+
+            '<div style="flex:1;min-width:0"><div class="iname">'+esc(x.desc)+'</div><div class="ibrand">'+esc(x.brand)+'</div><span class="ibadge '+bc+'">'+stL(s2)+'</span></div>'+
             '<div style="flex-shrink:0;text-align:right"><div class="iqty">'+x.qty.toLocaleString()+'</div><div class="iqlbl">unidades</div>'+cg+mn+'</div>'+
           '</div>'+
           '<div class="iacts'+(open?' open':'')+(isJ?' c3':'')+'">' +
@@ -677,18 +678,18 @@ function renderHist(){
   var el=document.getElementById('hist-list');
   if(!hist.length){el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg><p>Sin movimientos aún</p></div>';return;}
   el.innerHTML=hist.slice().reverse().map(function(m){
-    var bg='',meta=m.brand||'';
+    var bg='',meta=esc(m.brand||'');
     if(m.tipo==='entrada'&&m.subtipo==='ajuste'){
       bg='<span style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;background:var(--blue-l);color:var(--blue);margin-left:4px">Ajuste</span>';
-      if(m.nota)meta+=' · '+m.nota;
+      if(m.nota)meta+=' · '+esc(m.nota);
     } else if(m.tipo==='salida'&&m.subtipo==='ajuste'){
       bg='<span style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;background:var(--blue-l);color:var(--blue);margin-left:4px">Ajuste</span>';
-      if(m.nota)meta+=' · '+m.nota;
+      if(m.nota)meta+=' · '+esc(m.nota);
     } else if(m.tipo==='entrada'){
       bg=m.subtipo==='retorno'?'<span style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;background:var(--amber-l);color:var(--amber);margin-left:4px">Retorno</span>':'<span style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;background:var(--green-l);color:var(--green-d);margin-left:4px">Compra</span>';
-      if(m.proveedor)meta+=' · '+m.proveedor; if(m.factura)meta+=' · '+m.factura;
-    } else { if(m.nota)meta+=' · '+m.nota; }
-    return '<div class="hitem"><div class="hdot2 '+(m.tipo==='entrada'?'he':'hs')+'"></div><div style="flex:1"><div class="hname">'+m.desc+bg+'</div><div class="hmeta">'+meta+'</div></div><div><div class="hqty '+(m.tipo==='entrada'?'hqe':'hqs')+'">'+(m.tipo==='entrada'?'+':'-')+m.qty.toLocaleString()+'</div><div class="hdate">'+m.fecha+'</div></div></div>';
+      if(m.proveedor)meta+=' · '+esc(m.proveedor); if(m.factura)meta+=' · '+esc(m.factura);
+    } else { if(m.nota)meta+=' · '+esc(m.nota); }
+    return '<div class="hitem"><div class="hdot2 '+(m.tipo==='entrada'?'he':'hs')+'"></div><div style="flex:1"><div class="hname">'+esc(m.desc)+bg+'</div><div class="hmeta">'+meta+'</div></div><div><div class="hqty '+(m.tipo==='entrada'?'hqe':'hqs')+'">'+(m.tipo==='entrada'?'+':'-')+m.qty.toLocaleString()+'</div><div class="hdate">'+esc(m.fecha)+'</div></div></div>';
   }).join('');
 }
 
@@ -701,7 +702,7 @@ function renderAlrt(){
     var s2=st(x);
     var icon=s2==='zero'?'⛔':s2==='low'?'🔴':'⚠️';
     var msg=s2==='zero'?'Sin stock — reabastecer urgente':s2==='low'?'Stock '+x.qty+' — debajo del mínimo ('+x.min+')':'Stock '+x.qty+' — cerca del mínimo ('+x.min+')';
-    return '<div class="alrt '+(s2==='warn'?'awarn':'adanger')+'"><div class="abrand">'+x.brand+'</div><div class="aname">'+icon+' '+x.desc+'</div><div class="amsg">'+msg+'</div><button class="abtn" onclick="openSheet(\'entrada\','+x.id+')" type="button">+ Registrar entrada</button></div>';
+    return '<div class="alrt '+(s2==='warn'?'awarn':'adanger')+'"><div class="abrand">'+esc(x.brand)+'</div><div class="aname">'+icon+' '+esc(x.desc)+'</div><div class="amsg">'+msg+'</div><button class="abtn" onclick="openSheet(\'entrada\','+x.id+')" type="button">+ Registrar entrada</button></div>';
   }).join('');
 }
 
@@ -714,9 +715,9 @@ function renderDash(){
   var g={}; inv.forEach(function(x){if(!g[x.brand])g[x.brand]=[];g[x.brand].push(x);});
   document.getElementById('d-brands').innerHTML=Object.keys(g).map(function(b){
     var items=g[b]; var al=items.filter(function(x){return['zero','low','warn'].indexOf(st(x))>=0;}).length;
-    return '<div style="background:var(--card);border-radius:var(--r);padding:10px 12px;border:.5px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:9px"><div style="width:8px;height:8px;border-radius:50%;background:'+(brandC[b]||'#888')+';flex-shrink:0"></div><div style="flex:1;font-size:13px;font-weight:600">'+b+'</div><div style="font-size:12px;color:var(--muted)">'+items.length+' items</div>'+(al>0?'<div style="font-size:11px;font-weight:700;color:var(--red)">'+al+' alerta'+(al>1?'s':'')+'</div>':'')+'</div>';
+    return '<div style="background:var(--card);border-radius:var(--r);padding:10px 12px;border:.5px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:9px"><div style="width:8px;height:8px;border-radius:50%;background:'+(brandC[b]||'#888')+';flex-shrink:0"></div><div style="flex:1;font-size:13px;font-weight:600">'+esc(b)+'</div><div style="font-size:12px;color:var(--muted)">'+items.length+' items</div>'+(al>0?'<div style="font-size:11px;font-weight:700;color:var(--red)">'+al+' alerta'+(al>1?'s':'')+'</div>':'')+'</div>';
   }).join('');
-  document.getElementById('d-hist').innerHTML=hist.length?hist.slice().reverse().slice(0,5).map(function(m){return'<div class="hitem"><div class="hdot2 '+(m.tipo==='entrada'?'he':'hs')+'"></div><div style="flex:1"><div class="hname">'+m.desc+'</div><div class="hmeta">'+m.brand+'</div></div><div><div class="hqty '+(m.tipo==='entrada'?'hqe':'hqs')+'">'+(m.tipo==='entrada'?'+':'-')+m.qty.toLocaleString()+'</div><div class="hdate">'+m.fecha+'</div></div></div>';}).join(''):'<div style="color:var(--muted);font-size:13px">Sin movimientos aún.</div>';
+  document.getElementById('d-hist').innerHTML=hist.length?hist.slice().reverse().slice(0,5).map(function(m){return'<div class="hitem"><div class="hdot2 '+(m.tipo==='entrada'?'he':'hs')+'"></div><div style="flex:1"><div class="hname">'+esc(m.desc)+'</div><div class="hmeta">'+esc(m.brand)+'</div></div><div><div class="hqty '+(m.tipo==='entrada'?'hqe':'hqs')+'">'+(m.tipo==='entrada'?'+':'-')+m.qty.toLocaleString()+'</div><div class="hdate">'+esc(m.fecha)+'</div></div></div>';}).join(''):'<div style="color:var(--muted);font-size:13px">Sin movimientos aún.</div>';
 }
 
 // ── SHEET ─────────────────────────────────────────────────────────────────────
@@ -1026,13 +1027,14 @@ function reprintLote(itemId,loteKey){
 }
 
 function printEntryTag(x,qty,prov,fac,nota,fecha,isRet,ts){
+  var _e=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
   var d=ts?new Date(ts):new Date();
   var dateStr=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   dateStr=dateStr.charAt(0).toUpperCase()+dateStr.slice(1);
   var dateShort=d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});
   var w=window.open('','_blank','width=720,height=600');
   if(!w)return;
-  w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Tag Entrada — '+x.desc+'</title><style>'+
+  w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Tag Entrada — '+_e(x.desc)+'</title><style>'+
     '*{margin:0;padding:0;box-sizing:border-box;}'+
     'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f3ef;display:flex;align-items:flex-start;justify-content:center;padding:24px;min-height:100vh;}'+
     '.tag{background:white;width:100%;max-width:620px;border:2px solid #1D9E75;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(29,158,117,.15);}'+
@@ -1069,19 +1071,19 @@ function printEntryTag(x,qty,prov,fac,nota,fecha,isRet,ts){
       '<div class="date-short">'+dateShort+'</div>'+
     '</div>'+
     '<div class="body">'+
-      '<div class="field"><div class="field-label">Material</div><div class="field-value" style="font-size:17px">'+x.desc+'</div></div>'+
+      '<div class="field"><div class="field-label">Material</div><div class="field-value" style="font-size:17px">'+_e(x.desc)+'</div></div>'+
       '<div class="row2">'+
-        '<div class="field"><div class="field-label">Marca / Cliente</div><div class="field-value">'+x.brand+'</div></div>'+
-        (prov?'<div class="field"><div class="field-label">Proveedor</div><div class="field-value">'+prov+'</div></div>':'<div></div>')+
+        '<div class="field"><div class="field-label">Marca / Cliente</div><div class="field-value">'+_e(x.brand)+'</div></div>'+
+        (prov?'<div class="field"><div class="field-label">Proveedor</div><div class="field-value">'+_e(prov)+'</div></div>':'<div></div>')+
       '</div>'+
-      (fac?'<div class="field"><div class="field-label">No. Factura</div><div class="field-value">'+fac+'</div></div>':'')+
-      (nota?'<div class="field"><div class="field-label">Nota</div><div class="field-value" style="color:#6b6b67;font-weight:500">'+nota+'</div></div>':'')+
+      (fac?'<div class="field"><div class="field-label">No. Factura</div><div class="field-value">'+_e(fac)+'</div></div>':'')+
+      (nota?'<div class="field"><div class="field-label">Nota</div><div class="field-value" style="color:#6b6b67;font-weight:500">'+_e(nota)+'</div></div>':'')+
       '<div class="qty-section">'+
         '<div><div class="qty-label">Cantidad recibida</div><div class="qty-unit">unidades</div></div>'+
         '<div class="qty-val">'+qty.toLocaleString()+'</div>'+
       '</div>'+
     '</div>'+
-    '<div class="footer">Harvest Tek México · Sistema de Inventario FIFO · '+fecha+'</div>'+
+    '<div class="footer">Harvest Tek México · Sistema de Inventario FIFO · '+_e(fecha)+'</div>'+
   '</div>'+
   '<script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script>'+
   '</body></html>');

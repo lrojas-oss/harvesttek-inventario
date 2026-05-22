@@ -137,9 +137,35 @@
 
     /* RESPONSIVE */
     @media(max-width:900px){.stats-row{grid-template-columns:1fr 1fr;}.sidebar{display:none;}.main{padding:16px;}}
+
+    /* LOGIN GATE */
+    #admin-gate{position:fixed;inset:0;background:var(--green);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;}
+    .gate-card{background:var(--card);border-radius:20px;padding:32px 28px;width:100%;max-width:340px;text-align:center;}
+    .gate-icon{width:52px;height:52px;background:var(--green);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
+    .gate-icon svg{width:24px;height:24px;stroke:white;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
+    .gate-title{font-size:18px;font-weight:800;margin-bottom:4px;}
+    .gate-sub{font-size:12px;color:var(--muted);margin-bottom:22px;}
+    .gate-input{width:100%;padding:12px;border-radius:var(--rs);border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:22px;font-weight:700;letter-spacing:8px;text-align:center;outline:none;font-family:inherit;margin-bottom:12px;}
+    .gate-input:focus{border-color:var(--green);}
+    .gate-btn{width:100%;padding:13px;border-radius:var(--rs);border:none;background:var(--green);color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+    .gate-btn:active{opacity:.85;}
+    .gate-err{font-size:12px;color:var(--red);margin-top:8px;min-height:16px;}
   </style>
 </head>
 <body>
+
+<!-- ADMIN ACCESS GATE -->
+<div id="admin-gate">
+  <div class="gate-card">
+    <div class="gate-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+    <div class="gate-title">Harvest Tek</div>
+    <div class="gate-sub">Panel Administrador — Ingresa el PIN</div>
+    <input id="gate-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" class="gate-input" onkeydown="if(event.key==='Enter')checkGate()">
+    <button class="gate-btn" onclick="checkGate()">Acceder</button>
+    <div class="gate-err" id="gate-err"></div>
+  </div>
+</div>
+
 <div class="layout">
 
   <!-- SIDEBAR -->
@@ -338,6 +364,26 @@ let tblFilter = 'all';
 let activeSection = 'dashboard';
 let expandedAdminRow = null;
 
+// ── ADMIN ACCESS GATE ────────────────────────────────────────────────────────
+const ADMIN_PIN = '1234';
+function checkGate() {
+  const v = document.getElementById('gate-pin').value;
+  if (v === ADMIN_PIN) {
+    document.getElementById('admin-gate').style.display = 'none';
+    sessionStorage.setItem('ht_admin_ok', '1');
+  } else {
+    document.getElementById('gate-err').textContent = 'PIN incorrecto';
+    document.getElementById('gate-pin').value = '';
+  }
+}
+(function() {
+  if (sessionStorage.getItem('ht_admin_ok') === '1') {
+    document.getElementById('admin-gate').style.display = 'none';
+  } else {
+    setTimeout(() => document.getElementById('gate-pin').focus(), 100);
+  }
+})();
+
 function toggleAdminRow(id) {
   expandedAdminRow = expandedAdminRow === id ? null : id;
   renderTable();
@@ -345,6 +391,8 @@ function toggleAdminRow(id) {
 
 const brandC = {'Family Fresh Farms':'#3B6D11','Ocean Mist':'#185FA5','Baolian Farms':'#534AB7','Fresh Express':'#854F0B','General':'#5F5E5A'};
 const brandBg = {'Family Fresh Farms':'#EAF3DE','Ocean Mist':'#E6F1FB','Baolian Farms':'#EEEDFE','Fresh Express':'#FAEEDA','General':'#F1EFE8'};
+
+function esc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 
 function getOldestLote(itemId) {
   const lotes = (window.lotesData || {})[itemId] || {};
@@ -401,7 +449,7 @@ function renderAll() {
     const z = items.filter(i => st(i) === 'zero').length;
     const a = items.filter(i => ['zero','low','warn'].includes(st(i))).length;
     return `<tr>
-      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${brandBg[b]||'#eee'};color:${brandC[b]||'#666'}">${b}</span></td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${brandBg[b]||'#eee'};color:${brandC[b]||'#666'}">${esc(b)}</span></td>
       <td>${items.length}</td>
       <td style="color:${z>0?'var(--red)':'var(--muted)'};font-weight:${z>0?'700':'400'}">${z}</td>
       <td><span class="badge ${a>0?'b-low':'b-ok'}">${a>0?a+' alerta'+(a>1?'s':''):'Normal'}</span></td>
@@ -411,7 +459,7 @@ function renderAll() {
   // Alerts summary table
   document.getElementById('d-alerts-tbody').innerHTML = alerts.length
     ? alerts.slice(0,8).map(i => `<tr>
-        <td style="font-size:12px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.desc}</td>
+        <td style="font-size:12px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.desc)}</td>
         <td style="font-weight:700">${i.qty}</td>
         <td style="color:var(--muted)">${i.min || '—'}</td>
         <td style="font-weight:700;color:var(--blue)">${i.upc > 0 ? (i.qty/i.upc).toFixed(1)+' 🔄' : '—'}</td>
@@ -461,12 +509,12 @@ function renderTable() {
                   const days = l.ts ? Math.floor((Date.now()-l.ts)/86400000) : null;
                   const ageCls = days===null?'':'lote-age '+(days>30?'old':days>14?'warn':'ok');
                   return `<tr>
-                    <td style="font-weight:600">${l.fecha||'—'}</td>
+                    <td style="font-weight:600">${esc(l.fecha||'—')}</td>
                     <td style="font-weight:700;color:var(--green)">${(l.qty||0).toLocaleString()}</td>
                     <td style="color:var(--muted)">${(l.qtyOriginal||l.qty||0).toLocaleString()}</td>
                     <td>${days!==null?`<span class="${ageCls}">${days}d</span>`:'—'}</td>
-                    <td style="color:var(--muted)">${l.proveedor||'—'}</td>
-                    <td style="color:var(--muted)">${l.factura||'—'}</td>
+                    <td style="color:var(--muted)">${esc(l.proveedor||'—')}</td>
+                    <td style="color:var(--muted)">${esc(l.factura||'—')}</td>
                   </tr>`;
                 }).join('')}
               </tbody>
@@ -477,8 +525,8 @@ function renderTable() {
     </td></tr>` : '';
 
     return `<tr class="inv-row${isExp?' expanded':''}" onclick="toggleAdminRow(${item.id})">
-      <td style="font-weight:600;max-width:240px"><span class="expand-icon">▶</span><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;max-width:210px;vertical-align:middle">${item.desc}</div></td>
-      <td><span style="display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:${brandBg[item.brand]||'#eee'};color:${brandC[item.brand]||'#666'}">${item.brand}</span></td>
+      <td style="font-weight:600;max-width:240px"><span class="expand-icon">▶</span><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;max-width:210px;vertical-align:middle">${esc(item.desc)}</div></td>
+      <td><span style="display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:${brandBg[item.brand]||'#eee'};color:${brandC[item.brand]||'#666'}">${esc(item.brand)}</span></td>
       <td style="font-weight:700;font-size:15px">${item.qty.toLocaleString()}</td>
       <td style="color:var(--muted)">${item.min > 0 ? item.min.toLocaleString() : '—'}</td>
       <td style="color:var(--muted);font-size:12px">${item.upc > 0 ? item.upc.toLocaleString() : '—'}</td>
@@ -525,8 +573,8 @@ function renderAlerts() {
           : '';
         return `<div class="alert-card ${s === 'warn' ? 'amber' : 'red'}">
           <div class="alert-icon">${icon}</div>
-          <div class="alert-name">${item.desc}</div>
-          <div class="alert-brand">${item.brand}</div>
+          <div class="alert-name">${esc(item.desc)}</div>
+          <div class="alert-brand">${esc(item.brand)}</div>
           <div class="alert-detail">
             Stock actual: <strong>${item.qty}</strong> · Mínimo: <strong>${item.min || '—'}</strong>
             ${oldestLote ? ` · Lote más antiguo: ${loteAgeHtml(oldestLote)}` : ''}
@@ -551,8 +599,8 @@ function renderHist() {
     <div class="hist-row">
       <div class="hdot ${m.tipo}" style="margin-top:5px"></div>
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:600">${m.desc}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${m.brand}${m.nota ? ' · ' + m.nota : ''}</div>
+        <div style="font-size:13px;font-weight:600">${esc(m.desc)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(m.brand)}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:13px;font-weight:700;color:${m.tipo==='entrada'?'var(--green)':'var(--red)'}">${m.tipo==='entrada'?'+':'-'}${m.qty.toLocaleString()}</div>
