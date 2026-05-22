@@ -573,7 +573,7 @@ function doLogin(){
   document.getElementById('bnav').style.display='flex';
   document.getElementById('fab').style.display=role==='jefe'?'flex':'none';
   document.getElementById('rbadge').textContent=role==='jefe'?'🔑 Jefe':'📦 Almacenista';
-  showPage('inv'); renderInv(); updatePill();
+  showPage('inv'); renderInv(); updatePill(); // Ambos roles inician en Inventario
 }
 
 function doLogout(){
@@ -638,9 +638,13 @@ function renderInv(){
             lotesHtml='<div class="ilotes"><div class="ilotes-title">Lotes disponibles ('+sl.length+')</div>'+
               sl.map(function(l,i){
                 var meta=(l.proveedor?l.proveedor:'')+(l.factura?' · '+l.factura:'');
+                var printBtn=isJ
+                  ?'<button onclick="reprintLote('+x.id+',\''+l.key+'\')" type="button" title="Re-imprimir etiqueta" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:4px 7px;color:var(--muted);font-size:13px;flex-shrink:0;line-height:1">🖨</button>'
+                  :'';
                 return '<div class="ilote-row"><div class="ilote-bar"></div>'+
                   '<div style="flex:1"><div class="ilote-fecha">'+l.fecha.split(' ')[0]+'</div>'+(meta?'<div class="ilote-meta">'+meta+'</div>':'')+'</div>'+
-                  '<div style="font-size:15px;font-weight:800;color:var(--green)">'+l.qty.toLocaleString()+'</div></div>';
+                  '<div style="font-size:15px;font-weight:800;color:var(--green);margin-right:6px">'+l.qty.toLocaleString()+'</div>'+
+                  printBtn+'</div>';
               }).join('')+
             '</div>';
           } else {
@@ -1015,8 +1019,14 @@ function aQ(d){
 }
 
 // ── TAG DE ENTRADA IMPRIMIBLE ─────────────────────────────────────────────────
-function printEntryTag(x,qty,prov,fac,nota,fecha,isRet){
-  var d=new Date();
+function reprintLote(itemId,loteKey){
+  var x=inv.filter(function(i){return i.id===itemId;})[0]; if(!x)return;
+  var lote=(lotesCache[itemId]||{})[loteKey]; if(!lote)return;
+  printEntryTag(x,lote.qtyOriginal||lote.qty,lote.proveedor||'',lote.factura||'',lote.nota||'',lote.fecha||'',false,lote.ts);
+}
+
+function printEntryTag(x,qty,prov,fac,nota,fecha,isRet,ts){
+  var d=ts?new Date(ts):new Date();
   var dateStr=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   dateStr=dateStr.charAt(0).toUpperCase()+dateStr.slice(1);
   var dateShort=d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});

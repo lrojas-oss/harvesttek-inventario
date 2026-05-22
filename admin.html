@@ -120,6 +120,21 @@
     .lote-age.old{background:var(--red-l);color:var(--red);}
     .fifo-warn{margin-top:8px;padding:6px 10px;background:var(--red-l);border-radius:var(--rs);font-size:11px;color:var(--red);font-weight:600;}
 
+    /* FILAS EXPANDIBLES DE LOTES */
+    .inv-row{cursor:pointer;transition:background .1s;}
+    .inv-row:hover td{background:var(--bg) !important;}
+    .inv-row.expanded td{background:var(--green-l) !important;}
+    .inv-row .expand-icon{display:inline-block;font-size:10px;margin-right:5px;transition:transform .2s;color:var(--muted);}
+    .inv-row.expanded .expand-icon{transform:rotate(90deg);color:var(--green-d);}
+    .lote-detail-row td{padding:0 !important;border-bottom:.5px solid var(--border);}
+    .lote-detail-inner{background:var(--bg);padding:10px 14px 14px;}
+    .lote-detail-inner table{width:100%;border-collapse:collapse;font-size:12px;}
+    .lote-detail-inner thead th{text-align:left;padding:5px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:.5px solid var(--border);}
+    .lote-detail-inner tbody td{padding:7px 10px;border-bottom:.5px solid var(--border);}
+    .lote-detail-inner tbody tr:last-child td{border-bottom:none;}
+    .lote-detail-inner tbody tr:hover td{background:var(--card);}
+    .lote-empty{padding:10px 14px;font-size:12px;color:var(--muted);font-style:italic;}
+
     /* RESPONSIVE */
     @media(max-width:900px){.stats-row{grid-template-columns:1fr 1fr;}.sidebar{display:none;}.main{padding:16px;}}
   </style>
@@ -321,6 +336,12 @@ window.historial = [];
 window.lotesData = {};
 let tblFilter = 'all';
 let activeSection = 'dashboard';
+let expandedAdminRow = null;
+
+function toggleAdminRow(id) {
+  expandedAdminRow = expandedAdminRow === id ? null : id;
+  renderTable();
+}
 
 const brandC = {'Family Fresh Farms':'#3B6D11','Ocean Mist':'#185FA5','Baolian Farms':'#534AB7','Fresh Express':'#854F0B','General':'#5F5E5A'};
 const brandBg = {'Family Fresh Farms':'#EAF3DE','Ocean Mist':'#E6F1FB','Baolian Farms':'#EEEDFE','Fresh Express':'#FAEEDA','General':'#F1EFE8'};
@@ -418,8 +439,45 @@ function renderTable() {
     const pct = item.min > 0 ? Math.min(100, Math.round(item.qty / item.min * 100)) : null;
     const barColor = s === 'ok' ? '#1D9E75' : s === 'warn' ? '#BA7517' : '#E24B4A';
     const oldestLote = getOldestLote(item.id);
-    return `<tr>
-      <td style="font-weight:600;max-width:240px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.desc}</div></td>
+    const isExp = expandedAdminRow === item.id;
+
+    // Sub-fila de lotes
+    const rawLotes = window.lotesData[item.id] || {};
+    const activeLotes = Object.values(rawLotes).filter(l => (l.qty||0) > 0).sort((a,b)=>(a.ts||0)-(b.ts||0));
+    const detailRow = isExp ? `<tr class="lote-detail-row"><td colspan="8">
+      <div class="lote-detail-inner">
+        ${activeLotes.length
+          ? `<table>
+              <thead><tr>
+                <th>Fecha de llegada</th>
+                <th>Disponible</th>
+                <th>Cant. original</th>
+                <th>Antigüedad</th>
+                <th>Proveedor</th>
+                <th>No. Factura</th>
+              </tr></thead>
+              <tbody>
+                ${activeLotes.map(l => {
+                  const days = l.ts ? Math.floor((Date.now()-l.ts)/86400000) : null;
+                  const ageCls = days===null?'':'lote-age '+(days>30?'old':days>14?'warn':'ok');
+                  return `<tr>
+                    <td style="font-weight:600">${l.fecha||'—'}</td>
+                    <td style="font-weight:700;color:var(--green)">${(l.qty||0).toLocaleString()}</td>
+                    <td style="color:var(--muted)">${(l.qtyOriginal||l.qty||0).toLocaleString()}</td>
+                    <td>${days!==null?`<span class="${ageCls}">${days}d</span>`:'—'}</td>
+                    <td style="color:var(--muted)">${l.proveedor||'—'}</td>
+                    <td style="color:var(--muted)">${l.factura||'—'}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>`
+          : '<div class="lote-empty">Sin lotes registrados para este material</div>'
+        }
+      </div>
+    </td></tr>` : '';
+
+    return `<tr class="inv-row${isExp?' expanded':''}" onclick="toggleAdminRow(${item.id})">
+      <td style="font-weight:600;max-width:240px"><span class="expand-icon">▶</span><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;max-width:210px;vertical-align:middle">${item.desc}</div></td>
       <td><span style="display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:${brandBg[item.brand]||'#eee'};color:${brandC[item.brand]||'#666'}">${item.brand}</span></td>
       <td style="font-weight:700;font-size:15px">${item.qty.toLocaleString()}</td>
       <td style="color:var(--muted)">${item.min > 0 ? item.min.toLocaleString() : '—'}</td>
@@ -445,7 +503,7 @@ function renderTable() {
       </td>
       <td>${loteAgeHtml(oldestLote)}</td>
       <td><span class="badge ${stClass(s)}">${stLabel(s)}</span></td>
-    </tr>`;
+    </tr>${detailRow}`;
   }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Sin resultados</td></tr>';
 }
 
