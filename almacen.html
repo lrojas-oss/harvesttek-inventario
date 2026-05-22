@@ -548,6 +548,41 @@ function googleSignIn(){
     if(typeof firebase === 'undefined'){ setSS(false); showGoogleGate(); return; }
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
+    var dbStarted = false;
+
+    function startDbListeners(){
+      if(dbStarted) return;
+      dbStarted = true;
+      db.ref('inventory').on('value', function(s){
+        var d = s.val();
+        if (d) {
+          lotesCache = {};
+          inv = Object.values(d).map(function(x) {
+            if (x.lotes) lotesCache[x.id] = x.lotes;
+            else if (!lotesCache[x.id]) lotesCache[x.id] = {};
+            var clean = {}; Object.keys(x).forEach(function(k){ if(k!=='lotes') clean[k]=x[k]; }); return clean;
+          });
+        } else {
+          inv = JSON.parse(JSON.stringify(DEFAULT_INV));
+          lotesCache = {};
+          DEFAULT_INV.forEach(function(x){ db.ref('inventory/'+x.id).set(x); });
+        }
+        localStorage.setItem('ht_inv', JSON.stringify(inv));
+        setSS(true);
+        var activePage = document.querySelector('.page.active');
+        if (role) {
+          renderInv();
+          updatePill();
+          if (activePage && activePage.id === 'page-alrt') renderAlrt();
+          if (activePage && activePage.id === 'page-dash') renderDash();
+        }
+      }, function(){ setSS(false); });
+      db.ref('historial').on('value', function(s){
+        var d = s.val();
+        hist = d ? Object.values(d).sort(function(a,b){return(a.ts||0)-(b.ts||0);}) : [];
+        localStorage.setItem('ht_hist', JSON.stringify(hist));
+      });
+    }
 
     firebase.auth().onAuthStateChanged(function(user){
       if(!user){ showGoogleGate(); return; }
@@ -562,39 +597,9 @@ function googleSignIn(){
       document.getElementById('google-gate').style.display='none';
       document.getElementById('gauth-err').style.display='none';
       document.getElementById('login-screen').style.display='flex';
+      startDbListeners();
     });
 
-    db.ref('inventory').on('value', function(s){
-      var d = s.val();
-      if (d) {
-        lotesCache = {};
-        inv = Object.values(d).map(function(x) {
-          if (x.lotes) lotesCache[x.id] = x.lotes;
-          else if (!lotesCache[x.id]) lotesCache[x.id] = {};
-          var clean = {}; Object.keys(x).forEach(function(k){ if(k!=='lotes') clean[k]=x[k]; }); return clean;
-        });
-      } else {
-        inv = JSON.parse(JSON.stringify(DEFAULT_INV));
-        lotesCache = {};
-        DEFAULT_INV.forEach(function(x){ db.ref('inventory/'+x.id).set(x); });
-      }
-      localStorage.setItem('ht_inv', JSON.stringify(inv));
-      setSS(true);
-      // Always re-render if app is visible (fixes PC web view stale data)
-      var activePage = document.querySelector('.page.active');
-      if (role) {
-        renderInv();
-        updatePill();
-        // If user is on dash or alrt, refresh those too
-        if (activePage && activePage.id === 'page-alrt') renderAlrt();
-        if (activePage && activePage.id === 'page-dash') renderDash();
-      }
-    }, function(){ setSS(false); });
-    db.ref('historial').on('value', function(s){
-      var d = s.val();
-      hist = d ? Object.values(d).sort(function(a,b){return(a.ts||0)-(b.ts||0);}) : [];
-      localStorage.setItem('ht_hist', JSON.stringify(hist));
-    });
   } catch(e){ setSS(false); showGoogleGate(); }
 })();
 

@@ -335,6 +335,33 @@
   firebase.initializeApp(firebaseConfig);
   var db = firebase.database();
 
+  var dbStarted=false;
+  function startDbListeners(){
+    if(dbStarted) return;
+    dbStarted=true;
+    db.ref('inventory').on('value', function(snap){
+      var data=snap.val();
+      if(data){
+        window.lotesData={};
+        window.inventory=Object.values(data).map(function(item){
+          if(item.lotes) window.lotesData[item.id]=item.lotes;
+          var clean=Object.assign({},item); delete clean.lotes; return clean;
+        });
+      } else {
+        window.inventory=[];
+        window.lotesData={};
+      }
+      setSyncStatus(true);
+      renderAll();
+    }, function(){ setSyncStatus(false); });
+
+    db.ref('historial').on('value', function(snap){
+      var data=snap.val();
+      window.historial=data?Object.values(data).sort(function(a,b){return(a.ts||0)-(b.ts||0);}):[];
+      renderHist();
+    });
+  }
+
   firebase.auth().onAuthStateChanged(function(user){
     if(!user){
       document.getElementById('admin-gate').style.display='flex';
@@ -355,28 +382,7 @@
     document.getElementById('sb-user').style.display='flex';
     document.getElementById('sb-user').style.flexDirection='column';
     document.getElementById('sb-email').textContent=user.email;
-  });
-
-  db.ref('inventory').on('value', function(snap){
-    var data=snap.val();
-    if(data){
-      window.lotesData={};
-      window.inventory=Object.values(data).map(function(item){
-        if(item.lotes) window.lotesData[item.id]=item.lotes;
-        var clean=Object.assign({},item); delete clean.lotes; return clean;
-      });
-    } else {
-      window.inventory=[];
-      window.lotesData={};
-    }
-    setSyncStatus(true);
-    renderAll();
-  }, function(){ setSyncStatus(false); });
-
-  db.ref('historial').on('value', function(snap){
-    var data=snap.val();
-    window.historial=data?Object.values(data).sort(function(a,b){return(a.ts||0)-(b.ts||0);}):[];
-    renderHist();
+    startDbListeners();
   });
 
   window.refreshData=function(){
