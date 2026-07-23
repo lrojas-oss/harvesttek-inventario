@@ -609,7 +609,15 @@ function saveMov(m){ try{ if(db) db.ref('historial').push(m); }catch(e){ hist.pu
 
 function saveLote(itemId,loteData){ try{ if(db) db.ref('inventory/'+itemId+'/lotes').push(loteData); }catch(e){} }
 function updateLote(itemId,loteId,newQty){ try{ if(db){ if(newQty<=0) db.ref('inventory/'+itemId+'/lotes/'+loteId).remove(); else db.ref('inventory/'+itemId+'/lotes/'+loteId+'/qty').set(newQty); } }catch(e){} }
-function getLotesSorted(itemId){ var lotes=lotesCache[itemId]||{}; return Object.keys(lotes).map(function(k){return Object.assign({key:k},lotes[k]);}).filter(function(l){return(l.qty||0)>0;}).sort(function(a,b){return(a.ts||0)-(b.ts||0);}); }
+// normaliza cada lote leído de Firebase (fecha/qty pueden faltar o venir corruptos en datos legacy)
+// para que ningún consumidor tenga que blindarse contra eso — y un lote corrupto no vuelva a bloquear la tarjeta
+function getLotesSorted(itemId){
+  var lotes=lotesCache[itemId]||{};
+  return Object.keys(lotes).map(function(k){
+    var l=lotes[k]||{};
+    return {key:k,fecha:l.fecha||'Sin fecha',ts:l.ts||0,qty:Number(l.qty)||0,qtyOriginal:l.qtyOriginal,proveedor:l.proveedor,factura:l.factura,nota:l.nota};
+  }).filter(function(l){return l.qty>0;}).sort(function(a,b){return a.ts-b.ts;});
+}
 // retornos y ajustes no traen fecha/lote confiable — se acumulan en un lote "Sobrante" en vez de crear uno nuevo por fecha
 function addSobrante(itemId,qty,nota){
   var lotes=lotesCache[itemId]||{};
@@ -927,7 +935,7 @@ function confirmSheet(){
       lotesUsados.forEach(function(lu){ updateLote(item.id,lu.key,lu.newQty); });
       var loteDetail=lotesUsados.map(function(lu){
         var l=(lotesCache[item.id]||{})[lu.key];
-        return (l?l.fecha.split(' ')[0]:'lote')+': -'+lu.qty;
+        return (l&&l.fecha?l.fecha.split(' ')[0]:'lote')+': -'+lu.qty;
       }).join(' | ');
       var mov={ts:Date.now(),fecha:today,brand:item.brand,desc:item.desc,tipo:'salida',qty:totalQ,nota:nota+(loteDetail?'\nLotes: '+loteDetail:'')};
       saveInv(item); saveMov(mov); toast('-'+totalQ+' registrados (FIFO)');
