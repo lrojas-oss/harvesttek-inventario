@@ -562,6 +562,7 @@ function googleSignIn(){
             else if (!lotesCache[x.id]) lotesCache[x.id] = {};
             var clean = {}; Object.keys(x).forEach(function(k){ if(k!=='lotes') clean[k]=x[k]; }); return clean;
           });
+          inv.forEach(reconcileLotes);
         } else {
           inv = JSON.parse(JSON.stringify(DEFAULT_INV));
           lotesCache = {};
@@ -609,6 +610,24 @@ function saveMov(m){ try{ if(db) db.ref('historial').push(m); }catch(e){ hist.pu
 function saveLote(itemId,loteData){ try{ if(db) db.ref('inventory/'+itemId+'/lotes').push(loteData); }catch(e){} }
 function updateLote(itemId,loteId,newQty){ try{ if(db){ if(newQty<=0) db.ref('inventory/'+itemId+'/lotes/'+loteId).remove(); else db.ref('inventory/'+itemId+'/lotes/'+loteId+'/qty').set(newQty); } }catch(e){} }
 function getLotesSorted(itemId){ var lotes=lotesCache[itemId]||{}; return Object.keys(lotes).map(function(k){return Object.assign({key:k},lotes[k]);}).filter(function(l){return(l.qty||0)>0;}).sort(function(a,b){return(a.ts||0)-(b.ts||0);}); }
+// retornos y ajustes no traen fecha/lote confiable — se acumulan en un lote "Sobrante" en vez de crear uno nuevo por fecha
+function addSobrante(itemId,qty,nota){
+  var lotes=lotesCache[itemId]||{};
+  var key=Object.keys(lotes).filter(function(k){return lotes[k].fecha==='Sobrante';})[0];
+  if(key) updateLote(itemId,key,(lotes[key].qty||0)+qty);
+  else saveLote(itemId,{fecha:'Sobrante',ts:Date.now(),qty:qty,qtyOriginal:qty,nota:nota||'Retornos y ajustes sin lote de origen'});
+}
+// ponytail: self-heals items where lotes drifted from item.qty (e.g. old adjustments that only touched the global total)
+function reconcileLotes(x){
+  var sum=getLotesSorted(x.id).reduce(function(s,l){return s+l.qty;},0);
+  var diff=x.qty-sum; if(diff===0)return;
+  if(diff<0){
+    var rem=-diff;
+    getLotesSorted(x.id).forEach(function(l){ if(rem<=0)return; var take=Math.min(l.qty,rem); updateLote(x.id,l.key,l.qty-take); rem-=take; });
+  } else {
+    addSobrante(x.id,diff,'Reconciliación automática');
+  }
+}
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function esc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
@@ -874,10 +893,14 @@ function confirmSheet(){
     var nota=ret?(document.getElementById('fnotar').value||''):(document.getElementById('fnota').value||'');
     item.qty+=q;
     var mov={ts:Date.now(),fecha:today,brand:item.brand,desc:item.desc,tipo:'entrada',subtipo:ret?'retorno':'compra',qty:q,proveedor:prov,factura:fac,nota:nota};
-    var loteData={fecha:today,ts:Date.now(),qty:q,qtyOriginal:q,proveedor:prov,factura:fac,nota:nota};
-    saveLote(item.id,loteData);
-    saveInv(item); saveMov(mov); toast('+'+q+' registrados');
-    printEntryTag(item,q,prov,fac,nota,today,ret);
+    if(ret){
+      addSobrante(item.id,q,nota);
+      saveInv(item); saveMov(mov); toast('+'+q+' registrados (Sobrante)');
+    } else {
+      saveLote(item.id,{fecha:today,ts:Date.now(),qty:q,qtyOriginal:q,proveedor:prov,factura:fac,nota:nota});
+      saveInv(item); saveMov(mov); toast('+'+q+' registrados');
+      printEntryTag(item,q,prov,fac,nota,today,ret);
+    }
   } else if(mode==='salida'){
     var sl2=getLotesSorted(item.id);
     if(!sl2.length){
@@ -916,6 +939,12 @@ function confirmSheet(){
     var nota=document.getElementById('fnota').value||'';
     var mov={ts:Date.now(),fecha:today,brand:item.brand,desc:item.desc,tipo:diff>0?'entrada':'salida',subtipo:'ajuste',qty:Math.abs(diff),nota:'Ajuste por conteo'+(nota?' — '+nota:''),proveedor:'',factura:''};
     item.qty=newQty;
+    if(diff<0){
+      var rem=-diff;
+      getLotesSorted(item.id).forEach(function(l){ if(rem<=0)return; var take=Math.min(l.qty,rem); updateLote(item.id,l.key,l.qty-take); rem-=take; });
+    } else {
+      addSobrante(item.id,diff,'Ajuste por conteo'+(nota?' — '+nota:''));
+    }
     saveInv(item); saveMov(mov);
     toast((diff>0?'📈 +':'📉 ')+Math.abs(diff)+' unidades (ajuste por conteo)');
   }
