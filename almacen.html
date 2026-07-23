@@ -343,14 +343,7 @@
   <!-- INVENTARIO -->
   <div id="page-inv" class="page active">
     <div class="searchbar"><div class="sw"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="srch" id="srch" placeholder="Buscar material..." oninput="renderInv()" type="search"></div></div>
-    <div class="chips">
-      <button class="chip active" onclick="setFilter(this,'')" type="button">Todos</button>
-      <button class="chip" onclick="setFilter(this,'Family Fresh Farms')" type="button">Family Fresh</button>
-      <button class="chip" onclick="setFilter(this,'Ocean Mist')" type="button">Ocean Mist</button>
-      <button class="chip" onclick="setFilter(this,'Baolian Farms')" type="button">Baolian</button>
-      <button class="chip" onclick="setFilter(this,'Fresh Express')" type="button">Fresh Express</button>
-      <button class="chip" onclick="setFilter(this,'General')" type="button">General</button>
-    </div>
+    <div class="chips" id="chips"></div>
     <div class="main" id="inv-list"></div>
   </div>
 
@@ -520,6 +513,40 @@ var selRole = null;
 var db = null;
 var lotesCache = {};
 var brandC = {'Family Fresh Farms':'#3B6D11','Ocean Mist':'#185FA5','Baolian Farms':'#534AB7','Fresh Express':'#854F0B','General':'#5F5E5A'};
+var DEFAULT_BRANDS = ['Family Fresh Farms','Ocean Mist','Baolian Farms','Fresh Express','General'];
+var CHIP_LABELS = {'Family Fresh Farms':'Family Fresh','Baolian Farms':'Baolian'};
+
+// ── MARCAS (dinámico: base + cualquier marca nueva ya presente en inventario) ──
+function getBrands(){
+  var seen={}, out=[];
+  DEFAULT_BRANDS.concat(inv.map(function(x){return x.brand;})).forEach(function(b){
+    if(b && !seen[b]){ seen[b]=true; out.push(b); }
+  });
+  return out;
+}
+function brandOptionsHtml(selected){
+  return getBrands().map(function(b){ return '<option'+(b===selected?' selected':'')+'>'+esc(b)+'</option>'; }).join('');
+}
+function toggleNewBrand(selectId,inputId){
+  var sel=document.getElementById(selectId), inp=document.getElementById(inputId);
+  var isNew=sel.value==='__new__';
+  inp.style.display=isNew?'block':'none';
+  if(isNew) inp.focus();
+}
+function resolveBrand(selectId,inputId){
+  var sel=document.getElementById(selectId);
+  if(sel.value==='__new__') return (document.getElementById(inputId).value||'').trim();
+  return sel.value;
+}
+function renderChips(){
+  var el=document.getElementById('chips'); if(!el) return;
+  var html='<button class="chip'+(filter===''?' active':'')+'" onclick="setFilter(this,\'\')" type="button">Todos</button>';
+  getBrands().forEach(function(b){
+    var bq=b.replace(/'/g,"\\'");
+    html+='<button class="chip'+(filter===b?' active':'')+'" onclick="setFilter(this,\''+bq+'\')" type="button">'+esc(CHIP_LABELS[b]||b)+'</button>';
+  });
+  el.innerHTML=html;
+}
 
 // ── FIREBASE ──────────────────────────────────────────────────────────────────
 function isAllowedEmail(e){
@@ -573,6 +600,7 @@ function googleSignIn(){
         var activePage = document.querySelector('.page.active');
         if (role) {
           renderInv();
+          renderChips();
           updatePill();
           if (activePage && activePage.id === 'page-alrt') renderAlrt();
           if (activePage && activePage.id === 'page-dash') renderDash();
@@ -669,7 +697,7 @@ function doLogin(){
   document.getElementById('bnav').style.display='flex';
   document.getElementById('fab').style.display=role==='jefe'?'flex':'none';
   document.getElementById('rbadge').textContent=role==='jefe'?'🔑 Jefe':'📦 Almacenista';
-  showPage('inv'); renderInv(); updatePill(); // Ambos roles inician en Inventario
+  showPage('inv'); renderInv(); renderChips(); updatePill(); // Ambos roles inician en Inventario
 }
 
 function doLogout(){
@@ -821,7 +849,10 @@ function openSheet(m,id){
   var t=document.getElementById('stitle'),sb=document.getElementById('ssub'),bd=document.getElementById('sbody'),ok=document.getElementById('sok');
   if(m==='add'){
     t.textContent='Agregar material'; sb.textContent='Nuevo material de empaque'; ok.textContent='Guardar'; ok.className='bok2';
-    bd.innerHTML='<label class="flbl">Descripción</label><input class="finput" id="fd" placeholder="Nombre del material"><label class="flbl">Marca</label><select class="finput" id="fb"><option>Family Fresh Farms</option><option>Ocean Mist</option><option>Baolian Farms</option><option>Fresh Express</option><option>General</option></select><div class="frow"><div><label class="flbl">Stock inicial</label><input class="finput" id="fq" type="number" min="0" value="0"></div><div><label class="flbl">Stock mínimo</label><input class="finput" id="fm" type="number" min="0" value="0"></div></div>';
+    bd.innerHTML='<label class="flbl">Descripción</label><input class="finput" id="fd" placeholder="Nombre del material">'+
+      '<label class="flbl">Marca</label><select class="finput" id="fb" onchange="toggleNewBrand(\'fb\',\'fbnew\')">'+brandOptionsHtml()+'<option value="__new__">➕ Nueva marca…</option></select>'+
+      '<input class="finput" id="fbnew" placeholder="Nombre de la nueva marca" style="display:none">'+
+      '<div class="frow"><div><label class="flbl">Stock inicial</label><input class="finput" id="fq" type="number" min="0" value="0"></div><div><label class="flbl">Stock mínimo</label><input class="finput" id="fm" type="number" min="0" value="0"></div></div>';
   } else if(m==='ajuste'){
     t.textContent='Ajuste por conteo'; sb.textContent=item.desc+'\n'+item.brand+' · Stock sistema: '+item.qty; ok.textContent='Aplicar ajuste'; ok.className='bok2 blu';
     bd.innerHTML='<div class="adj-info">📋 Ingresa el <strong>conteo físico real</strong> que encontraste en almacén. La app calculará automáticamente la diferencia y la registrará como ajuste en el historial.</div>'+
@@ -842,7 +873,8 @@ function openSheet(m,id){
       '</div>'+
       (item.photo?'<img src="'+item.photo+'" style="width:100%;height:120px;object-fit:cover;border-radius:var(--rs);margin-bottom:12px;border:.5px solid var(--border)">':'')+
       '<label class="flbl">Nombre</label><input class="finput" id="fde" value="'+item.desc.replace(/"/g,'&quot;')+'">'+
-      '<label class="flbl">Marca</label><select class="finput" id="fbe">'+['Family Fresh Farms','Ocean Mist','Baolian Farms','Fresh Express','General'].map(function(b){return'<option'+(b===item.brand?' selected':'')+'>'+b+'</option>';}).join('')+'</select>'+
+      '<label class="flbl">Marca</label><select class="finput" id="fbe" onchange="toggleNewBrand(\'fbe\',\'fbenew\')">'+brandOptionsHtml(item.brand)+'<option value="__new__">➕ Nueva marca…</option></select>'+
+      '<input class="finput" id="fbenew" placeholder="Nombre de la nueva marca" style="display:none">'+
       '<label class="flbl">Stock mínimo</label><div class="qctrl"><button class="qbtn" onclick="aM(-10)" type="button">−</button><input class="qinp" id="fm" type="number" min="0" value="'+(item.min||0)+'"><button class="qbtn" onclick="aM(10)" type="button">+</button></div>'+
       '<label class="flbl">Unidades por carga</label><div class="cfg-info" style="font-size:11px;margin-bottom:8px">Unidades de este material que se usan en 1 carga de producto final.</div><div class="qctrl"><button class="qbtn" onclick="aU(-100)" type="button">−</button><input class="qinp" id="fu" type="number" min="0" value="'+(item.upc||0)+'"><button class="qbtn" onclick="aU(100)" type="button">+</button></div>'+
       '<button class="del-btn" onclick="delItem('+item.id+')" type="button">🗑 Eliminar este material</button>';
@@ -883,11 +915,15 @@ function confirmSheet(){
   if(mode==='add'){
     var d=(document.getElementById('fd').value||'').trim();
     if(!d){toast('Ingresa el nombre');return;}
-    var nx={id:nextId++,brand:document.getElementById('fb').value,desc:d,qty:parseInt(document.getElementById('fq').value)||0,min:parseInt(document.getElementById('fm').value)||0,upc:0};
+    var brand=resolveBrand('fb','fbnew');
+    if(!brand){toast('Ingresa el nombre de la nueva marca');return;}
+    var nx={id:nextId++,brand:brand,desc:d,qty:parseInt(document.getElementById('fq').value)||0,min:parseInt(document.getElementById('fm').value)||0,upc:0};
     inv.push(nx); saveInv(nx);
   } else if(mode==='cfg'){
     item.desc=(document.getElementById('fde').value||item.desc).trim();
-    item.brand=document.getElementById('fbe').value;
+    var brandE=resolveBrand('fbe','fbenew');
+    if(!brandE){toast('Ingresa el nombre de la nueva marca');return;}
+    item.brand=brandE;
     item.min=parseInt(document.getElementById('fm').value)||0;
     item.upc=parseInt(document.getElementById('fu').value)||0;
     saveInv(item); toast('✅ Guardado');
@@ -956,7 +992,7 @@ function confirmSheet(){
     saveInv(item); saveMov(mov);
     toast((diff>0?'📈 +':'📉 ')+Math.abs(diff)+' unidades (ajuste por conteo)');
   }
-  closeSheet(); renderInv();
+  closeSheet(); renderInv(); renderChips();
 }
 
 function delItem(id){

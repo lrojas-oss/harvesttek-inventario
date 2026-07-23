@@ -273,11 +273,6 @@
             <input class="search-tbl" id="tbl-srch" placeholder="Buscar..." oninput="renderTable()">
             <select class="search-tbl" id="tbl-brand" onchange="renderTable()" style="width:160px">
               <option value="">Todas las marcas</option>
-              <option>Family Fresh Farms</option>
-              <option>Ocean Mist</option>
-              <option>Baolian Farms</option>
-              <option>Fresh Express</option>
-              <option>General</option>
             </select>
             <button class="tfilter active" id="tf-all" onclick="setTF(this,'all')">Todos</button>
             <button class="tfilter" id="tf-alert" onclick="setTF(this,'alert')">Con alerta</button>
@@ -462,6 +457,12 @@ function setSyncStatus(online) {
 function renderAll() {
   const inv = window.inventory;
   const alerts = inv.filter(i => ['zero','low','warn'].includes(st(i)));
+
+  // Marca filter dropdown: refleja también marcas nuevas dadas de alta desde la app de almacén
+  const brandSel = document.getElementById('tbl-brand');
+  const prevBrandSel = brandSel.value;
+  const brandNames = [...new Set(inv.map(i => i.brand))].filter(Boolean).sort();
+  brandSel.innerHTML = '<option value="">Todas las marcas</option>' + brandNames.map(b => `<option${b===prevBrandSel?' selected':''}>${esc(b)}</option>`).join('');
 
   // Sidebar alert count
   const sac = document.getElementById('sb-alert-count');
