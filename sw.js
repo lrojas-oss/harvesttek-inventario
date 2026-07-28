@@ -1,5 +1,5 @@
 // Cambia la versión cada vez que actualices los archivos — esto fuerza que la PWA instalada descargue la versión nueva
-const CACHE = 'harvesttek-v4';
+const CACHE = 'harvesttek-v5';
 const FILES = ['./almacen.html', './manifest-almacen.json', './icon-192.svg', './icon-512.svg'];
 
 self.addEventListener('install', e => {

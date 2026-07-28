@@ -589,7 +589,7 @@ function googleSignIn(){
             else if (!lotesCache[x.id]) lotesCache[x.id] = {};
             var clean = {}; Object.keys(x).forEach(function(k){ if(k!=='lotes') clean[k]=x[k]; }); return clean;
           });
-          inv.forEach(reconcileLotes);
+          if(!pendingWrites) inv.forEach(reconcileLotes);
         } else {
           inv = JSON.parse(JSON.stringify(DEFAULT_INV));
           lotesCache = {};
@@ -632,11 +632,16 @@ function googleSignIn(){
   } catch(e){ setSS(false); showGoogleGate(); }
 })();
 
-function saveInv(x){ try{ if(db){ var data={}; Object.keys(x).forEach(function(k){if(k!=='lotes')data[k]=x[k];}); db.ref('inventory/'+x.id).update(data); } }catch(e){} localStorage.setItem('ht_inv',JSON.stringify(inv)); }
+// qty y lotes se escriben por separado: entre las dos escrituras el snapshot está desbalanceado
+// y reconcileLotes lo confundiría con drift real (convertía entradas reales en "Sobrante").
+var pendingWrites=0;
+function track(p){ if(!p||!p.then)return p; pendingWrites++; var d=function(){pendingWrites=Math.max(0,pendingWrites-1);}; p.then(d,d); return p; }
+
+function saveInv(x){ try{ if(db){ var data={}; Object.keys(x).forEach(function(k){if(k!=='lotes')data[k]=x[k];}); track(db.ref('inventory/'+x.id).update(data)); } }catch(e){} localStorage.setItem('ht_inv',JSON.stringify(inv)); }
 function saveMov(m){ try{ if(db) db.ref('historial').push(m); }catch(e){ hist.push(m); localStorage.setItem('ht_hist',JSON.stringify(hist)); } }
 
-function saveLote(itemId,loteData){ try{ if(db) db.ref('inventory/'+itemId+'/lotes').push(loteData); }catch(e){} }
-function updateLote(itemId,loteId,newQty){ try{ if(db){ if(newQty<=0) db.ref('inventory/'+itemId+'/lotes/'+loteId).remove(); else db.ref('inventory/'+itemId+'/lotes/'+loteId+'/qty').set(newQty); } }catch(e){} }
+function saveLote(itemId,loteData){ try{ if(db) track(db.ref('inventory/'+itemId+'/lotes').push(loteData)); }catch(e){} }
+function updateLote(itemId,loteId,newQty){ try{ if(db){ if(newQty<=0) track(db.ref('inventory/'+itemId+'/lotes/'+loteId).remove()); else track(db.ref('inventory/'+itemId+'/lotes/'+loteId+'/qty').set(newQty)); } }catch(e){} }
 // normaliza cada lote leído de Firebase (fecha/qty pueden faltar o venir corruptos en datos legacy)
 // para que ningún consumidor tenga que blindarse contra eso — y un lote corrupto no vuelva a bloquear la tarjeta
 function getLotesSorted(itemId){
