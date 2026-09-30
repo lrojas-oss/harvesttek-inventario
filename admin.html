@@ -285,7 +285,7 @@
           </div>
         </div>
         <table>
-          <thead><tr><th>Descripción</th><th>Marca</th><th>Stock actual</th><th>Stock mínimo</th><th>Uds/carga</th><th>Cargas disponibles</th><th>Lote más antiguo</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Descripción</th><th>ID Famous</th><th>Marca</th><th>Stock actual</th><th>Stock mínimo</th><th>Uds/carga</th><th>Cargas disponibles</th><th>Lote más antiguo</th><th>Estado</th></tr></thead>
           <tbody id="inv-tbody"></tbody>
         </table>
       </div>
@@ -356,6 +356,10 @@
   firebase.initializeApp(firebaseConfig);
   var db = firebase.database();
 
+  // fuente real de conexión (no navigator.onLine): .info/connected refleja el socket con Firebase
+  db.ref('.info/connected').on('value', function(snap){ setSyncStatus(snap.val()===true); });
+  window.addEventListener('online', function(){ db.goOffline(); db.goOnline(); });
+
   var dbStarted=false;
   function startDbListeners(){
     if(dbStarted) return;
@@ -408,7 +412,8 @@
 
   window.refreshData=function(){
     document.getElementById('sync-lbl').textContent='Actualizando...';
-    setTimeout(function(){ setSyncStatus(true); },800);
+    db.goOffline();
+    db.goOnline();
   };
 })();
 </script>
@@ -551,7 +556,7 @@ function renderTable() {
     // Sub-fila de lotes
     const rawLotes = window.lotesData[item.id] || {};
     const activeLotes = Object.values(rawLotes).filter(l => (l.qty||0) > 0).sort((a,b)=>(a.ts||0)-(b.ts||0));
-    const detailRow = isExp ? `<tr class="lote-detail-row"><td colspan="8">
+    const detailRow = isExp ? `<tr class="lote-detail-row"><td colspan="9">
       <div class="lote-detail-inner">
         ${activeLotes.length
           ? `<table>
@@ -585,6 +590,7 @@ function renderTable() {
 
     return `<tr class="inv-row${isExp?' expanded':''}" onclick="toggleAdminRow(${item.id})">
       <td style="font-weight:600;max-width:240px"><span class="expand-icon">▶</span><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;max-width:210px;vertical-align:middle">${esc(item.desc)}</div></td>
+      <td style="color:var(--muted);font-size:12px">${esc(item.pmId||'—')}</td>
       <td><span style="display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:${brandBg[item.brand]||'#eee'};color:${brandC[item.brand]||'#666'}">${esc(item.brand)}</span></td>
       <td style="font-weight:700;font-size:15px">${item.qty.toLocaleString()}</td>
       <td style="color:var(--muted)">${item.min > 0 ? item.min.toLocaleString() : '—'}</td>
@@ -611,7 +617,7 @@ function renderTable() {
       <td>${loteAgeHtml(oldestLote)}</td>
       <td><span class="badge ${stClass(s)}">${stLabel(s)}</span></td>
     </tr>${detailRow}`;
-  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Sin resultados</td></tr>';
+  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Sin resultados</td></tr>';
 }
 
 function renderAlerts() {
@@ -695,16 +701,16 @@ function exportExcel() {
     ['REPORTE DE INVENTARIO — HARVEST TEK MÉXICO'],
     [`Generado: ${today}`],
     [],
-    ['ID','Descripción','Marca','Stock actual','Stock mínimo','Uds por carga','Cargas disponibles','Estado'],
+    ['ID','ID Famous','Descripción','Marca','Stock actual','Stock mínimo','Uds por carga','Cargas disponibles','Estado'],
     ...window.inventory.map(i => {
       const s = st(i);
       const pct = i.min > 0 ? Math.round(i.qty / i.min * 100) : '';
       const cargas = i.upc > 0 ? parseFloat((i.qty/i.upc).toFixed(2)) : '';
-      return [i.id, i.desc, i.brand, i.qty, i.min || 0, i.upc || 0, cargas, stLabel(s)];
+      return [i.id, i.pmId || '', i.desc, i.brand, i.qty, i.min || 0, i.upc || 0, cargas, stLabel(s)];
     })
   ];
   const ws1 = XLSX.utils.aoa_to_sheet(invData);
-  ws1['!cols'] = [{wch:5},{wch:45},{wch:22},{wch:14},{wch:14},{wch:14},{wch:18},{wch:16}];
+  ws1['!cols'] = [{wch:5},{wch:12},{wch:45},{wch:22},{wch:14},{wch:14},{wch:14},{wch:18},{wch:16}];
   XLSX.utils.book_append_sheet(wb, ws1, 'Inventario');
 
   // Sheet 2: Alertas
@@ -786,8 +792,8 @@ function exportHistExcel() {
 }
 
 function exportCSV() {
-  const rows = [['ID','Descripcion','Marca','Stock','Minimo','Estado']];
-  window.inventory.forEach(i => rows.push([i.id, `"${i.desc}"`, `"${i.brand}"`, i.qty, i.min||0, stLabel(st(i))]));
+  const rows = [['ID','ID Famous','Descripcion','Marca','Stock','Minimo','Estado']];
+  window.inventory.forEach(i => rows.push([i.id, i.pmId||'', `"${i.desc}"`, `"${i.brand}"`, i.qty, i.min||0, stLabel(st(i))]));
   const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
