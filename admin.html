@@ -197,13 +197,13 @@
       <span class="sb-badge">Solo lectura</span>
     </div>
     <div class="sb-nav">
-      <button class="snav-btn active" id="snav-dashboard" onclick="showSection('dashboard')">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        Dashboard
-      </button>
-      <button class="snav-btn" id="snav-inventario" onclick="showSection('inventario')">
+      <button class="snav-btn active" id="snav-inventario" onclick="showSection('inventario')">
         <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="17" width="20" height="4" rx="1"/></svg>
         Inventario
+      </button>
+      <button class="snav-btn" id="snav-dashboard" onclick="showSection('dashboard')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
       </button>
       <button class="snav-btn" id="snav-alertas" onclick="showSection('alertas')">
         <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -228,7 +228,7 @@
   <div class="main">
 
     <!-- DASHBOARD -->
-    <div id="sec-dashboard" class="page-content active">
+    <div id="sec-dashboard" class="page-content">
       <div class="page-header">
         <div><div class="page-title">Dashboard</div><div class="page-sub">Vista general del inventario en tiempo real</div></div>
         <div class="header-actions">
@@ -261,7 +261,7 @@
     </div>
 
     <!-- INVENTARIO -->
-    <div id="sec-inventario" class="page-content">
+    <div id="sec-inventario" class="page-content active">
       <div class="page-header">
         <div><div class="page-title">Inventario completo</div><div class="page-sub">47 materiales de empaque · datos en tiempo real</div></div>
         <div class="header-actions">
@@ -322,13 +322,13 @@
 
 <!-- MOBILE BOTTOM NAV -->
 <div class="bnav">
-  <button class="nbtn active" id="mnav-dashboard" onclick="showSection('dashboard')" type="button">
-    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-    Dashboard
-  </button>
-  <button class="nbtn" id="mnav-inventario" onclick="showSection('inventario')" type="button">
+  <button class="nbtn active" id="mnav-inventario" onclick="showSection('inventario')" type="button">
     <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="17" width="20" height="4" rx="1"/></svg>
     Inventario
+  </button>
+  <button class="nbtn" id="mnav-dashboard" onclick="showSection('dashboard')" type="button">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Dashboard
   </button>
   <button class="nbtn" id="mnav-alertas" onclick="showSection('alertas')" type="button">
     <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
