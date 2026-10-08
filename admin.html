@@ -46,7 +46,7 @@
     .nbtn.active{color:var(--green);}
 
     /* MAIN */
-    .main{flex:1;padding:28px 32px;max-width:1200px;}
+    .main{flex:1;padding:28px 32px;max-width:1600px;}
     .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap;}
     .page-title{font-size:22px;font-weight:800;letter-spacing:-.4px;}
     .page-sub{font-size:13px;color:var(--muted);margin-top:3px;}
@@ -589,9 +589,9 @@ function renderTable() {
     </td></tr>` : '';
 
     return `<tr class="inv-row${isExp?' expanded':''}" onclick="toggleAdminRow(${item.id})">
-      <td style="font-weight:600;max-width:240px"><span class="expand-icon">▶</span><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;max-width:210px;vertical-align:middle">${esc(item.desc)}</div></td>
+      <td style="font-weight:600;white-space:nowrap"><span class="expand-icon">▶</span><span style="vertical-align:middle">${esc(item.desc)}</span></td>
       <td style="color:var(--muted);font-size:12px">${esc(item.pmId||'—')}</td>
-      <td><span style="display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:${brandBg[item.brand]||'#eee'};color:${brandC[item.brand]||'#666'}">${esc(item.brand)}</span></td>
+      <td><span style="display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;background:${brandBg[item.brand]||'#eee'};color:${brandC[item.brand]||'#666'}">${esc(item.brand)}</span></td>
       <td style="font-weight:700;font-size:15px">${item.qty.toLocaleString()}</td>
       <td style="color:var(--muted)">${item.min > 0 ? item.min.toLocaleString() : '—'}</td>
       <td style="color:var(--muted);font-size:12px">${item.upc > 0 ? item.upc.toLocaleString() : '—'}</td>
