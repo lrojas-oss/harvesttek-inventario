@@ -503,6 +503,7 @@ var DEFAULT_INV = [
 
 var inv = JSON.parse(localStorage.getItem('ht_inv')||'null') || JSON.parse(JSON.stringify(DEFAULT_INV));
 var hist = JSON.parse(localStorage.getItem('ht_hist')||'[]');
+var proveedores = JSON.parse(localStorage.getItem('ht_proveedores')||'[]');
 var nextId = 48;
 var filter = '';
 var expanded = null;
@@ -616,6 +617,11 @@ function googleSignIn(){
         hist = d ? Object.values(d).sort(function(a,b){return(a.ts||0)-(b.ts||0);}) : [];
         localStorage.setItem('ht_hist', JSON.stringify(hist));
       });
+      db.ref('proveedores').on('value', function(s){
+        var d = s.val();
+        proveedores = d ? Object.values(d).sort() : [];
+        localStorage.setItem('ht_proveedores', JSON.stringify(proveedores));
+      });
     }
 
     firebase.auth().onAuthStateChanged(function(user){
@@ -654,6 +660,14 @@ function track(fn){
 
 function saveInv(x){ try{ if(db){ var data={}; Object.keys(x).forEach(function(k){if(k!=='lotes')data[k]=x[k];}); track(function(){return db.ref('inventory/'+x.id).update(data);}); } }catch(e){} localStorage.setItem('ht_inv',JSON.stringify(inv)); }
 function saveMov(m){ try{ if(db) db.ref('historial').push(m).catch(function(err){ console.error(err); toast('Error al guardar: '+(err&&err.message||err)); }); }catch(e){ hist.push(m); localStorage.setItem('ht_hist',JSON.stringify(hist)); } }
+// agrega un proveedor nuevo a la lista compartida (para el desplegable) si no estaba ya — comparación sin distinguir mayúsc/espacios
+function saveProveedor(nombre){
+  nombre=(nombre||'').trim(); if(!nombre) return;
+  if(proveedores.some(function(p){return p.toLowerCase()===nombre.toLowerCase();})) return;
+  proveedores.push(nombre); localStorage.setItem('ht_proveedores',JSON.stringify(proveedores));
+  try{ if(db) db.ref('proveedores').push(nombre); }catch(e){}
+}
+function proveedoresDatalist(){ return '<datalist id="dl-proveedores">'+proveedores.map(function(p){return '<option value="'+esc(p)+'">';}).join('')+'</datalist>'; }
 
 // genera una key de push() SIN escribir — para incluirla en el mismo update() atómico que la qty
 function newLoteKey(itemId){ try{ return db?db.ref('inventory/'+itemId+'/lotes').push().key:null; }catch(e){ return null; } }
@@ -921,7 +935,7 @@ function openSheet(m,id){
       '<button class="del-btn" onclick="delItem('+item.id+')" type="button">🗑 Eliminar este material</button>';
   } else if(m==='entrada'){
     t.textContent='Registrar entrada'; sb.textContent=item.desc+'\n'+item.brand+' · Stock: '+item.qty; ok.textContent='+ Entrada'; ok.className='bok2';
-    bd.innerHTML='<label class="flbl">Cantidad</label><div class="qctrl"><button class="qbtn" onclick="aQ(-10)" type="button">−</button><input class="qinp" id="fq" type="number" min="1" value="100"><button class="qbtn" onclick="aQ(10)" type="button">+</button></div><div class="ret-toggle" onclick="togRet()"><div class="chkbox" id="chkbox"><svg viewBox="0 0 12 12" width="12" height="12"><polyline points="1.5 6 4.5 9.5 10.5 2.5"/></svg></div><div><div style="font-size:13px;font-weight:700;color:#854F0B">Retorno de producción</div><div style="font-size:11px;color:#854F0B;opacity:.8">Material no usado que regresa al almacén</div></div></div><div id="cfields"><label class="flbl">Proveedor <span style="color:var(--red)">*</span></label><input class="finput" id="fprov" placeholder="Ej: Empak de México SA de CV"><label class="flbl">No. factura <span style="color:var(--red)">*</span></label><input class="finput" id="ffac" placeholder="Ej: FAC-2025-00123"><label class="flbl">Nota (opcional)</label><input class="finput" id="fnota" placeholder="Nota adicional"></div><div id="rfields" style="display:none"><label class="flbl">Nota (opcional)</label><input class="finput" id="fnotar" placeholder="Ej: Sobrante línea tomate"></div>';
+    bd.innerHTML='<label class="flbl">Cantidad</label><div class="qctrl"><button class="qbtn" onclick="aQ(-10)" type="button">−</button><input class="qinp" id="fq" type="number" min="1" value="0"><button class="qbtn" onclick="aQ(10)" type="button">+</button></div><div class="ret-toggle" onclick="togRet()"><div class="chkbox" id="chkbox"><svg viewBox="0 0 12 12" width="12" height="12"><polyline points="1.5 6 4.5 9.5 10.5 2.5"/></svg></div><div><div style="font-size:13px;font-weight:700;color:#854F0B">Retorno de producción</div><div style="font-size:11px;color:#854F0B;opacity:.8">Material no usado que regresa al almacén</div></div></div><div id="cfields"><label class="flbl">Proveedor <span style="color:var(--red)">*</span></label><input class="finput" id="fprov" list="dl-proveedores" placeholder="Ej: Empak de México SA de CV">'+proveedoresDatalist()+'<label class="flbl">No. factura <span style="color:var(--red)">*</span></label><input class="finput" id="ffac" placeholder="Ej: FAC-2025-00123"><label class="flbl">Nota (opcional)</label><input class="finput" id="fnota" placeholder="Nota adicional"></div><div id="rfields" style="display:none"><label class="flbl">Nota (opcional)</label><input class="finput" id="fnotar" placeholder="Ej: Sobrante línea tomate"></div>';
   } else if(m==='salida'){
     t.textContent='Registrar salida'; sb.textContent=item.desc+'\n'+item.brand+' · Stock: '+item.qty; ok.textContent='− Salida'; ok.className='bok2 amb';
     var sl=getLotesSorted(item.id);
@@ -976,6 +990,7 @@ function confirmSheet(){
     var fac=ret?'':(document.getElementById('ffac').value||'').trim();
     if(!ret&&!prov){toast('⚠️ Ingresa el proveedor');return;}
     if(!ret&&!fac){toast('⚠️ Ingresa el número de factura');return;}
+    if(!ret) saveProveedor(prov);
     var nota=ret?(document.getElementById('fnotar').value||''):(document.getElementById('fnota').value||'');
     item.qty+=q;
     var mov={ts:Date.now(),fecha:today,brand:item.brand,desc:item.desc,tipo:'entrada',subtipo:ret?'retorno':'compra',qty:q,proveedor:prov,factura:fac,nota:nota};
