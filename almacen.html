@@ -1058,8 +1058,14 @@ function confirmSheet(){
 
 function delItem(id){
   if(!confirm('¿Eliminar este material? No se puede deshacer.'))return;
+  var item=inv.find(function(x){return x.id===id;});
   inv=inv.filter(function(x){return x.id!==id;});
   try{if(db)db.ref('inventory/'+id).remove();}catch(e){}
+  if(item){
+    var _now=new Date();
+    var fecha=_now.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Hermosillo'})+' '+_now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Hermosillo'});
+    saveMov({ts:Date.now(),fecha:fecha,brand:item.brand,desc:item.desc,tipo:'eliminacion',qty:item.qty||0,nota:'Material eliminado del inventario'});
+  }
   localStorage.setItem('ht_inv',JSON.stringify(inv));
   closeSheet(); renderInv(); toast('Material eliminado');
 }
