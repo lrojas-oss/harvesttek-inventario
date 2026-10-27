@@ -100,6 +100,7 @@
     .iacts.open{display:grid;}
     .iacts.c3{grid-template-columns:1fr 1fr 1fr;}
     .iacts.c4{grid-template-columns:1fr 1fr 1fr auto;}
+    .iacts.c5{grid-template-columns:1fr 1fr 1fr 1fr auto;}
     .abt{padding:10px;text-align:center;font-size:12px;font-weight:600;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;}
     .abt:not(:last-child){border-right:.5px solid var(--border);}
     .ae{color:var(--green);}.as{color:var(--amber);}.ac{color:var(--blue);}
@@ -796,7 +797,7 @@ function renderInv(){
         var bc=s2==='zero'?'bzero':('b'+s2);
         var open=expanded===x.id;
         var isJ=role==='jefe';
-        var colN=isJ?'c4':'c3';
+        var colN=isJ?'c5':'c3';
         var cg=x.upc>0?'<div class="icargas">'+(x.qty/x.upc).toFixed(1)+' cargas</div>':'';
         var mn=x.min>0?'<div class="imin">mín. '+x.min.toLocaleString()+'</div>':'';
         var photoHtml=x.photo?'<img src="'+x.photo+'" class="item-photo">':(role==='jefe'?'':'');
@@ -826,10 +827,11 @@ function renderInv(){
             '<div style="flex:1;min-width:0"><div class="iname">'+esc(x.desc)+'</div><div class="ibrand">'+esc(x.brand)+'</div><span class="ibadge '+bc+'">'+stL(s2)+'</span></div>'+
             '<div style="flex-shrink:0;text-align:right"><div class="iqty">'+x.qty.toLocaleString()+'</div><div class="iqlbl">unidades</div>'+cg+mn+'</div>'+
           '</div>'+
-          '<div class="iacts'+(open?' open':'')+(isJ?' c3':'')+'">' +
+          '<div class="iacts'+(open?' open':'')+(isJ?' '+colN:'')+'">' +
             '<button class="abt ae" onclick="openSheet(\'entrada\','+x.id+')" type="button">＋ Entrada</button>'+
             '<button class="abt as" onclick="openSheet(\'salida\','+x.id+')" type="button">− Salida</button>'+
             '<button class="abt ac" onclick="openSheet(\'ajuste\','+x.id+')" type="button">⚖ Ajuste</button>'+
+            (isJ?'<button class="abt" style="color:#7C3AED" onclick="openSheet(\'transfer\','+x.id+')" type="button">⇄ Transferir</button>':'')+
             (isJ?'<button class="abt" style="color:var(--blue)" onclick="openSheet(\'cfg\','+x.id+')" type="button">⚙</button>':'')+
           '</div>'+
           lotesHtml+
@@ -856,8 +858,13 @@ function renderHist(){
     } else if(m.tipo==='entrada'){
       bg=m.subtipo==='retorno'?'<span style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;background:var(--amber-l);color:var(--amber);margin-left:4px">Retorno</span>':'<span style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;background:var(--green-l);color:var(--green-d);margin-left:4px">Compra</span>';
       if(m.proveedor)meta+=' · '+esc(m.proveedor); if(m.factura)meta+=' · '+esc(m.factura);
+    } else if(m.tipo==='transferencia'){
+      bg='<span style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;background:#EDE9FE;color:#7C3AED;margin-left:4px">Transferencia</span>';
+      meta+=m.subtipo==='entrada'?(' · Desde '+esc(m.origen||'')):(' · A '+esc(m.destino||''));
+      if(m.nota)meta+=' · '+esc(m.nota);
     } else { if(m.nota)meta+=' · '+esc(m.nota); }
-    return '<div class="hitem"><div class="hdot2 '+(m.tipo==='entrada'?'he':'hs')+'"></div><div style="flex:1"><div class="hname">'+esc(m.desc)+bg+'</div><div class="hmeta">'+meta+'</div></div><div><div class="hqty '+(m.tipo==='entrada'?'hqe':'hqs')+'">'+(m.tipo==='entrada'?'+':'-')+m.qty.toLocaleString()+'</div><div class="hdate">'+esc(m.fecha)+'</div></div></div>';
+    var esEntrada=m.tipo==='entrada'||(m.tipo==='transferencia'&&m.subtipo==='entrada');
+    return '<div class="hitem"><div class="hdot2 '+(esEntrada?'he':'hs')+'"></div><div style="flex:1"><div class="hname">'+esc(m.desc)+bg+'</div><div class="hmeta">'+meta+'</div></div><div><div class="hqty '+(esEntrada?'hqe':'hqs')+'">'+(esEntrada?'+':'-')+m.qty.toLocaleString()+'</div><div class="hdate">'+esc(m.fecha)+'</div></div></div>';
   }).join('');
 }
 
@@ -885,7 +892,7 @@ function renderDash(){
     var items=g[b]; var al=items.filter(function(x){return['zero','low','warn'].indexOf(st(x))>=0;}).length;
     return '<div style="background:var(--card);border-radius:var(--r);padding:10px 12px;border:.5px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:9px"><div style="width:8px;height:8px;border-radius:50%;background:'+(brandC[b]||'#888')+';flex-shrink:0"></div><div style="flex:1;font-size:13px;font-weight:600">'+esc(b)+'</div><div style="font-size:12px;color:var(--muted)">'+items.length+' items</div>'+(al>0?'<div style="font-size:11px;font-weight:700;color:var(--red)">'+al+' alerta'+(al>1?'s':'')+'</div>':'')+'</div>';
   }).join('');
-  document.getElementById('d-hist').innerHTML=hist.length?hist.slice().reverse().slice(0,5).map(function(m){return'<div class="hitem"><div class="hdot2 '+(m.tipo==='entrada'?'he':'hs')+'"></div><div style="flex:1"><div class="hname">'+esc(m.desc)+'</div><div class="hmeta">'+esc(m.brand)+'</div></div><div><div class="hqty '+(m.tipo==='entrada'?'hqe':'hqs')+'">'+(m.tipo==='entrada'?'+':'-')+m.qty.toLocaleString()+'</div><div class="hdate">'+esc(m.fecha)+'</div></div></div>';}).join(''):'<div style="color:var(--muted);font-size:13px">Sin movimientos aún.</div>';
+  document.getElementById('d-hist').innerHTML=hist.length?hist.slice().reverse().slice(0,5).map(function(m){var esEntrada=m.tipo==='entrada'||(m.tipo==='transferencia'&&m.subtipo==='entrada');return'<div class="hitem"><div class="hdot2 '+(esEntrada?'he':'hs')+'"></div><div style="flex:1"><div class="hname">'+esc(m.desc)+'</div><div class="hmeta">'+esc(m.brand)+'</div></div><div><div class="hqty '+(esEntrada?'hqe':'hqs')+'">'+(esEntrada?'+':'-')+m.qty.toLocaleString()+'</div><div class="hdate">'+esc(m.fecha)+'</div></div></div>';}).join(''):'<div style="color:var(--muted);font-size:13px">Sin movimientos aún.</div>';
 }
 
 // ── SHEET ─────────────────────────────────────────────────────────────────────
@@ -943,6 +950,26 @@ function openSheet(m,id){
         lHtml+
         '<div class="salida-total-box"><div class="salida-total-lbl">Total a salir</div><div class="salida-total-val" id="salida-total-val">0</div></div>'+
         '<label class="flbl">Nota / destino (opcional)</label><input class="finput" id="fnota" placeholder="Ej: Línea producción">';
+    }
+  } else if(m==='transfer'){
+    t.textContent='Transferir a otro almacén'; sb.textContent=item.desc+'\n'+item.brand+' · Stock: '+item.qty; ok.textContent='⇄ Transferir'; ok.className='bok2';
+    var destinos=Object.keys(ALMACENES).filter(function(k){return k!==currentAlmacen;});
+    var destSel='<label class="flbl">Almacén destino</label><select class="finput" id="ftodest">'+
+      destinos.map(function(k){return '<option value="'+k+'">'+esc(ALMACENES[k])+'</option>';}).join('')+'</select>';
+    var slT=getLotesSorted(item.id);
+    if(!slT.length){
+      bd.innerHTML=destSel+'<label class="flbl">Cantidad</label><div class="qctrl"><button class="qbtn" onclick="aQ(-10)" type="button">−</button><input class="qinp" id="fq" type="number" min="1" value="'+Math.min(10,item.qty||1)+'"><button class="qbtn" onclick="aQ(10)" type="button">+</button></div><label class="flbl">Nota (opcional)</label><input class="finput" id="fnota" placeholder="Nota adicional">';
+    } else {
+      var lHtmlT=slT.map(function(l){
+        return '<div class="lote-row"><div class="lote-bar"></div>'+
+          '<div style="flex:1"><div class="lote-fecha">'+l.fecha.split(' ')[0]+'</div>'+
+          '<div class="lote-avail">Disponible: <strong>'+l.qty.toLocaleString()+'</strong> ud'+(l.proveedor?' · '+l.proveedor:'')+'</div></div>'+
+          '<input class="lote-input" type="number" min="0" max="'+l.qty+'" value="0" data-key="'+l.key+'" data-max="'+l.qty+'" oninput="updateSalidaTotal()" placeholder="0"></div>';
+      }).join('');
+      bd.innerHTML=destSel+'<div class="fifo-hint">📋 FIFO — Indica cuánto transferir de cada lote (ordenados del más antiguo al más nuevo)</div>'+
+        lHtmlT+
+        '<div class="salida-total-box"><div class="salida-total-lbl">Total a transferir</div><div class="salida-total-val" id="salida-total-val">0</div></div>'+
+        '<label class="flbl">Nota (opcional)</label><input class="finput" id="fnota" placeholder="Nota adicional">';
     }
   }
   document.getElementById('ovl').classList.add('open');
@@ -1043,8 +1070,97 @@ function confirmSheet(){
     }
     saveInvAndLotes(item.id,item,loteUpd); saveMov(mov);
     toast((diff>0?'📈 +':'📉 ')+Math.abs(diff)+' unidades (ajuste por conteo)');
+  } else if(mode==='transfer'){
+    if(!db){toast('⚠️ La transferencia requiere conexión a internet');return;}
+    var destId=document.getElementById('ftodest').value;
+    if(!ALMACENES[destId]||destId===currentAlmacen){toast('Selecciona un almacén destino');return;}
+    var slX=getLotesSorted(item.id);
+    var totalQT=0, lotesUsadosX=[];
+    if(!slX.length){
+      totalQT=parseInt(document.getElementById('fq').value)||0;
+      if(totalQT<1)return;
+    } else {
+      var validX=true;
+      document.querySelectorAll('.lote-input').forEach(function(inp){
+        var q=parseInt(inp.value)||0; var mx=parseInt(inp.dataset.max)||0;
+        if(q>mx){toast('⚠️ Excede la cantidad disponible en un lote');validX=false;}
+        if(q>0) lotesUsadosX.push({key:inp.dataset.key,qty:q,newQty:mx-q});
+        totalQT+=q;
+      });
+      if(!validX)return;
+      if(totalQT<1){toast('Ingresa al menos 1 unidad en un lote');return;}
+    }
+    if(totalQT>item.qty){toast('Stock insuficiente ('+item.qty+' disponibles)');return;}
+    var notaT=document.getElementById('fnota').value||'';
+    doTransfer(destId,totalQT,lotesUsadosX,notaT,today);
+    return; // doTransfer cierra el sheet y repinta una vez resuelta la consulta al almacén destino
   }
   closeSheet(); renderInv(); renderChips();
+}
+
+// transferir material entre almacenes: solo jefe, requiere conexión (necesita leer el catálogo
+// del almacén destino para saber si el artículo ya existe ahí o hay que crearlo). Un único
+// db.ref().update() multi-ruta atómico mueve qty+lotes de origen, suma qty en destino (con
+// ServerValue.increment porque no tenemos ese almacén escuchado localmente) y crea en destino
+// un lote por cada lote de origen consumido, conservando su fecha — el FIFO sobrevive la transferencia.
+function doTransfer(destId,totalQ,lotesUsados,nota,today){
+  var origId=item.id, origAlm=currentAlmacen, origQtyAntes=item.qty;
+  var origLotes=lotesCache[origId]||{};
+  var origenNombre=ALMACENES[origAlm], destNombre=ALMACENES[destId];
+  var normKey=((item.brand||'')+'|'+(item.desc||'')).trim().toLowerCase().replace(/\s+/g,' ');
+  db.ref('stock/'+destId).once('value').then(function(snap){
+    var destData=snap.val()||{};
+    var destItems=Object.values(destData);
+    var match=destItems.filter(function(x){
+      return ((x.brand||'')+'|'+(x.desc||'')).trim().toLowerCase().replace(/\s+/g,' ')===normKey;
+    })[0];
+    var updates={};
+    var destItemId;
+
+    // los lotes nuevos del destino se arman antes de decidir cómo escribirlos: si el artículo es
+    // nuevo en destino, Firebase NO permite escribir 'stock/d/5' (objeto completo) y
+    // 'stock/d/5/lotes/x' (una subruta suya) en el mismo update() — "ancestor of another path".
+    // Por eso, cuando es nuevo, los lotes se embeben dentro del objeto completo en vez de como rutas sueltas.
+    var destLotes={};
+    if(lotesUsados.length){
+      lotesUsados.forEach(function(lu){
+        var l=origLotes[lu.key]||{};
+        var nk=db.ref().push().key;
+        destLotes[nk]={fecha:l.fecha||today,ts:l.ts||Date.now(),qty:lu.qty,qtyOriginal:lu.qty,proveedor:l.proveedor||'',factura:l.factura||'',nota:'Transferido desde '+origenNombre};
+      });
+    } else {
+      destLotes[db.ref().push().key]={fecha:today,ts:Date.now(),qty:totalQ,qtyOriginal:totalQ,nota:'Transferido desde '+origenNombre};
+    }
+
+    if(match){
+      destItemId=match.id;
+      updates['stock/'+destId+'/'+destItemId+'/qty']=firebase.database.ServerValue.increment(totalQ);
+      Object.keys(destLotes).forEach(function(k){ updates['stock/'+destId+'/'+destItemId+'/lotes/'+k]=destLotes[k]; });
+    } else {
+      destItemId=destItems.reduce(function(m,x){return Math.max(m,x.id||0);},0)+1;
+      updates['stock/'+destId+'/'+destItemId]={id:destItemId,brand:item.brand,desc:item.desc,qty:totalQ,min:item.min||0,upc:item.upc||0,pmId:item.pmId||'',lotes:destLotes};
+    }
+
+    if(lotesUsados.length){
+      lotesUsados.forEach(function(lu){ updates['stock/'+origAlm+'/'+origId+'/lotes/'+(lu.newQty<=0?lu.key:lu.key+'/qty')]=lu.newQty<=0?null:lu.newQty; });
+    }
+    updates['stock/'+origAlm+'/'+origId+'/qty']=origQtyAntes-totalQ;
+
+    var transferId=db.ref().push().key;
+    var movKeyO=db.ref('movs/'+origAlm).push().key;
+    var movKeyD=db.ref('movs/'+destId).push().key;
+    updates['movs/'+origAlm+'/'+movKeyO]={ts:Date.now(),fecha:today,brand:item.brand,desc:item.desc,tipo:'transferencia',subtipo:'salida',qty:totalQ,destino:destNombre,transferId:transferId,nota:nota};
+    updates['movs/'+destId+'/'+movKeyD]={ts:Date.now(),fecha:today,brand:item.brand,desc:item.desc,tipo:'transferencia',subtipo:'entrada',qty:totalQ,origen:origenNombre,transferId:transferId,nota:nota};
+
+    item.qty=origQtyAntes-totalQ;
+    track(function(){ return db.ref().update(updates); }).catch(function(err){
+      console.error(err); toast('Error al transferir: '+(err&&err.message||err));
+    });
+    toast('⇄ '+totalQ+' transferidos a '+destNombre);
+    closeSheet(); renderInv(); renderChips();
+  }).catch(function(err){
+    console.error(err); toast('Error al leer el almacén destino: '+(err&&err.message||err));
+  });
 }
 
 function delItem(id){
