@@ -52,6 +52,8 @@
     .hdr-info{flex:1;}
     .hdr-title{font-size:14px;font-weight:700;color:white;}
     .hdr-sub{font-size:10px;color:rgba(255,255,255,.7);margin-top:1px;}
+    .alm-sel{font-size:10px;color:rgba(255,255,255,.95);background:rgba(255,255,255,.18);border:none;border-radius:6px;padding:1px 4px;font-family:inherit;font-weight:700;}
+    .alm-sel:focus{outline:1px solid rgba(255,255,255,.6);}
     .rbadge{background:rgba(255,255,255,.25);border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700;color:white;margin-left:4px;}
     .sync-btn{background:rgba(255,255,255,.2);border:none;border-radius:20px;padding:4px 8px;color:white;font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;font-family:inherit;}
     .sdot{width:6px;height:6px;border-radius:50%;background:#4ade80;flex-shrink:0;}
@@ -323,7 +325,7 @@
     <div class="hdr-info">
       <div class="hdr-title">HT Almacén <span id="alert-pill" style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700;display:none">0</span></div>
       <div style="display:flex;align-items:center;gap:5px;margin-top:1px;">
-        <span class="hdr-sub">Harvest Tek</span>
+        <select id="alm-sel" class="alm-sel" onchange="switchAlmacen(this.value)"></select>
         <span id="rbadge" class="rbadge"></span>
       </div>
     </div>
@@ -451,60 +453,18 @@ var firebaseConfig = {
 var PINS = { jefe: '1234', almacenista: '0000' };
 // ─────────────────────────────────────────────────────────────────────────────
 
-var DEFAULT_INV = [
-  {id:1,brand:'Family Fresh Farms',desc:'Carton RM Hearts 12x3 FFF',qty:0,min:0,upc:0,pmId:'PM6008'},
-  {id:2,brand:'Family Fresh Farms',desc:'Bolsa RM Heart 12x3 FFF',qty:0,min:0,upc:0,pmId:'PM6120'},
-  {id:3,brand:'Family Fresh Farms',desc:'Carton Coliflor FFF',qty:0,min:0,upc:0,pmId:'PM6009'},
-  {id:4,brand:'Family Fresh Farms',desc:'Bolsa Coliflor Wrap Gen',qty:0,min:0,upc:0,pmId:'PM6118'},
-  {id:5,brand:'Family Fresh Farms',desc:'BOLSA PARA COLIFLOR PRINTED FFF',qty:0,min:0,upc:0,pmId:''},
-  {id:6,brand:'Family Fresh Farms',desc:'Bins FFF',qty:0,min:0,upc:0,pmId:''},
-  {id:7,brand:'Family Fresh Farms',desc:'BINS GENERICOS',qty:0,min:0,upc:0,pmId:''},
-  {id:8,brand:'Family Fresh Farms',desc:'Bolsa silver bins Generica',qty:0,min:0,upc:0,pmId:''},
-  {id:9,brand:'Family Fresh Farms',desc:'Tapa Bins FFF',qty:0,min:0,upc:0,pmId:''},
-  {id:10,brand:'Family Fresh Farms',desc:'BOLSA LINERS GENERICA PARA LECHUGA ROMANA FFF',qty:0,min:0,upc:0,pmId:''},
-  {id:11,brand:'Family Fresh Farms',desc:'Carton RM Liner FFF',qty:0,min:0,upc:0,pmId:''},
-  {id:12,brand:'Family Fresh Farms',desc:'Carton RM Liner Chico FFF',qty:0,min:0,upc:0,pmId:''},
-  {id:13,brand:'Family Fresh Farms',desc:'Carton Iceberg Lett Liner',qty:0,min:0,upc:0,pmId:''},
-  {id:14,brand:'Family Fresh Farms',desc:'RPC 6425',qty:0,min:0,upc:0,pmId:''},
-  {id:15,brand:'Family Fresh Farms',desc:'BROCCOLI FAMILY FRESH FARMS FFF',qty:0,min:0,upc:0,pmId:''},
-  {id:16,brand:'Family Fresh Farms',desc:'Carton Coliflor Alta/Jumbo FFF',qty:0,min:0,upc:0,pmId:'PM6076'},
-  {id:17,brand:'Ocean Mist',desc:'Bolsa RM Hearts 12x3 0930M-3-OMF',qty:0,min:0,upc:0,pmId:'PM6106'},
-  {id:18,brand:'Ocean Mist',desc:'Carton RM Hearts 12x3 0319-OMF',qty:0,min:0,upc:0,pmId:'PM6110'},
-  {id:19,brand:'Ocean Mist',desc:'Caja RM Hearts 8x3 0537-OMF',qty:0,min:0,upc:0,pmId:'PM6107'},
-  {id:20,brand:'Ocean Mist',desc:'Tapa RM Hearts 8x3 0538-OMF',qty:0,min:0,upc:0,pmId:''},
-  {id:21,brand:'Ocean Mist',desc:'Carton Broc Wax 0229A',qty:0,min:0,upc:0,pmId:''},
-  {id:22,brand:'Ocean Mist',desc:'Bolsa Coliflor 0921M-OMF',qty:0,min:0,upc:0,pmId:''},
-  {id:23,brand:'Ocean Mist',desc:'Carton Coliflor 12\'s 6" 0232-OMF',qty:0,min:0,upc:0,pmId:'PM6108'},
-  {id:24,brand:'Ocean Mist',desc:'Carton Coliflor 9\'s 7" 0237-OMF',qty:0,min:0,upc:0,pmId:'PM6109'},
-  {id:25,brand:'Baolian Farms',desc:'Carton RM Hearts PamPak',qty:0,min:0,upc:0,pmId:'PM6047'},
-  {id:26,brand:'Baolian Farms',desc:'Bolsa RM Heart Pampak 12X3',qty:0,min:0,upc:0,pmId:'PM6119'},
-  {id:27,brand:'Baolian Farms',desc:'BOLSA PARA HEARTS ROMAINE 6 Ct Pampak',qty:0,min:0,upc:0,pmId:''},
-  {id:28,brand:'Baolian Farms',desc:'Caja Alexa #1 RPC Green Bean PamPak',qty:0,min:0,upc:0,pmId:''},
-  {id:29,brand:'Baolian Farms',desc:'Tapa Caja Alexa #1 RPC Green Bean PamPak',qty:0,min:0,upc:0,pmId:''},
-  {id:30,brand:'Fresh Express',desc:'Carton RM Hearts 12x3 86606-FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:31,brand:'Fresh Express',desc:'Carton RM Hearts 12x3 Org. 86953-FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:32,brand:'Fresh Express',desc:'Bins 86550-FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:33,brand:'Fresh Express',desc:'Bins Verde 86628 FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:34,brand:'Fresh Express',desc:'Tapa Bins 86856-FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:35,brand:'Fresh Express',desc:'Bolsa Silver Bin 86262-FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:36,brand:'Fresh Express',desc:'Bolsa RM Hearts 12x3 reg 71102-FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:37,brand:'Fresh Express',desc:'Bolsa RM Hearts 12x3 Canada 85000-FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:38,brand:'Fresh Express',desc:'Bolsa RM Hearts 12x3 Giant 85002-FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:39,brand:'Fresh Express',desc:'Bolsa RM Hearts 12x3 Org 71100-FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:40,brand:'Fresh Express',desc:'Peco Pallet 97007 FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:41,brand:'Fresh Express',desc:'Cincho precortado Bco',qty:0,min:0,upc:0,pmId:'PM6066'},
-  {id:42,brand:'Fresh Express',desc:'ESQUINEROS LARGOS FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:43,brand:'Fresh Express',desc:'ESQUINEROS CORTOS FEX',qty:0,min:0,upc:0,pmId:''},
-  {id:44,brand:'General',desc:'Tarima CHEP',qty:0,min:0,upc:0,pmId:'PM6079'},
-  {id:45,brand:'General',desc:'Tarima #1',qty:0,min:0,upc:0,pmId:''},
-  {id:46,brand:'General',desc:'Tarima #2',qty:0,min:0,upc:0,pmId:''},
-  {id:47,brand:'General',desc:'Esquineros 1.5x1.5x84" C-140',qty:0,min:0,upc:0,pmId:'PM6072'}
-];
+// ── ALMACENES ────────────────────────────────────────────────────────────────
+// catálogo independiente por almacén: cada uno vive en sus propias rutas
+// stock/{almacenId} y movs/{almacenId} — un 4º almacén = agregar una línea aquí.
+var ALMACENES = { bataques:'Bataques Cooler', santelmo:'San Telmo', quimicos:'Químicos Cooler' };
+var currentAlmacen = localStorage.getItem('ht_almacen') || 'bataques';
+if (!ALMACENES[currentAlmacen]) currentAlmacen = 'bataques';
+// ─────────────────────────────────────────────────────────────────────────────
 
-var inv = JSON.parse(localStorage.getItem('ht_inv')||'null') || JSON.parse(JSON.stringify(DEFAULT_INV));
-var hist = JSON.parse(localStorage.getItem('ht_hist')||'[]');
+var inv = JSON.parse(localStorage.getItem('ht_inv_'+currentAlmacen)||'[]');
+var hist = JSON.parse(localStorage.getItem('ht_hist_'+currentAlmacen)||'[]');
 var proveedores = JSON.parse(localStorage.getItem('ht_proveedores')||'[]');
-var nextId = 48;
+var nextId = inv.reduce(function(m,x){return Math.max(m,x.id||0);},0)+1;
 var filter = '';
 var expanded = null;
 var mode = '';
@@ -582,26 +542,28 @@ function googleSignIn(){
     window.addEventListener('online', function(){ db.goOffline(); db.goOnline(); });
 
     var dbStarted = false;
+    var stockListenerRef = null, movsListenerRef = null;
 
-    function startDbListeners(){
-      if(dbStarted) return;
-      dbStarted = true;
-      db.ref('inventory').on('value', function(s){
+    // helpers: cada almacén vive en su propia rama — stock/{almacenId} y movs/{almacenId}
+    window.stockRef = function(suffix){ return db.ref('stock/'+currentAlmacen+(suffix?'/'+suffix:'')); };
+    window.movsRef = function(){ return db.ref('movs/'+currentAlmacen); };
+
+    // (re)suscribe a la rama del almacén activo — se llama de nuevo al cambiar de almacén
+    window.attachAlmacenListeners = function(){
+      if (stockListenerRef) stockListenerRef.off();
+      if (movsListenerRef) movsListenerRef.off();
+      stockListenerRef = stockRef();
+      stockListenerRef.on('value', function(s){
         var d = s.val();
-        if (d) {
-          lotesCache = {};
-          inv = Object.values(d).map(function(x) {
-            if (x.lotes) lotesCache[x.id] = x.lotes;
-            else if (!lotesCache[x.id]) lotesCache[x.id] = {};
-            var clean = {}; Object.keys(x).forEach(function(k){ if(k!=='lotes') clean[k]=x[k]; }); return clean;
-          });
-          if(!pendingWrites) inv.forEach(reconcileLotes);
-        } else {
-          inv = JSON.parse(JSON.stringify(DEFAULT_INV));
-          lotesCache = {};
-          DEFAULT_INV.forEach(function(x){ db.ref('inventory/'+x.id).set(x); });
-        }
-        localStorage.setItem('ht_inv', JSON.stringify(inv));
+        lotesCache = {};
+        inv = d ? Object.values(d).map(function(x) {
+          if (x.lotes) lotesCache[x.id] = x.lotes;
+          else if (!lotesCache[x.id]) lotesCache[x.id] = {};
+          var clean = {}; Object.keys(x).forEach(function(k){ if(k!=='lotes') clean[k]=x[k]; }); return clean;
+        }) : [];
+        nextId = inv.reduce(function(m,x){return Math.max(m,x.id||0);},0)+1;
+        if(!pendingWrites) inv.forEach(reconcileLotes);
+        localStorage.setItem('ht_inv_'+currentAlmacen, JSON.stringify(inv));
         setSS(true);
         var activePage = document.querySelector('.page.active');
         if (role) {
@@ -612,11 +574,19 @@ function googleSignIn(){
           if (activePage && activePage.id === 'page-dash') renderDash();
         }
       }, function(){ setSS(false); });
-      db.ref('historial').on('value', function(s){
+      movsListenerRef = movsRef();
+      movsListenerRef.on('value', function(s){
         var d = s.val();
         hist = d ? Object.values(d).sort(function(a,b){return(a.ts||0)-(b.ts||0);}) : [];
-        localStorage.setItem('ht_hist', JSON.stringify(hist));
+        localStorage.setItem('ht_hist_'+currentAlmacen, JSON.stringify(hist));
       });
+    };
+
+    function startDbListeners(){
+      if(dbStarted) return;
+      dbStarted = true;
+      attachAlmacenListeners();
+      updateAlmSel();
       db.ref('proveedores').on('value', function(s){
         var d = s.val();
         proveedores = d ? Object.values(d).sort() : [];
@@ -658,8 +628,8 @@ function track(fn){
   return p;
 }
 
-function saveInv(x){ try{ if(db){ var data={}; Object.keys(x).forEach(function(k){if(k!=='lotes')data[k]=x[k];}); track(function(){return db.ref('inventory/'+x.id).update(data);}); } }catch(e){} localStorage.setItem('ht_inv',JSON.stringify(inv)); }
-function saveMov(m){ try{ if(db) db.ref('historial').push(m).catch(function(err){ console.error(err); toast('Error al guardar: '+(err&&err.message||err)); }); }catch(e){ hist.push(m); localStorage.setItem('ht_hist',JSON.stringify(hist)); } }
+function saveInv(x){ try{ if(db){ var data={}; Object.keys(x).forEach(function(k){if(k!=='lotes')data[k]=x[k];}); track(function(){return stockRef(x.id).update(data);}); } }catch(e){} localStorage.setItem('ht_inv_'+currentAlmacen,JSON.stringify(inv)); }
+function saveMov(m){ try{ if(db) movsRef().push(m).catch(function(err){ console.error(err); toast('Error al guardar: '+(err&&err.message||err)); }); }catch(e){ hist.push(m); localStorage.setItem('ht_hist_'+currentAlmacen,JSON.stringify(hist)); } }
 // agrega un proveedor nuevo a la lista compartida (para el desplegable) si no estaba ya — comparación sin distinguir mayúsc/espacios
 function saveProveedor(nombre){
   nombre=(nombre||'').trim(); if(!nombre) return;
@@ -670,7 +640,7 @@ function saveProveedor(nombre){
 function proveedoresDatalist(){ return '<datalist id="dl-proveedores">'+proveedores.map(function(p){return '<option value="'+esc(p)+'">';}).join('')+'</datalist>'; }
 
 // genera una key de push() SIN escribir — para incluirla en el mismo update() atómico que la qty
-function newLoteKey(itemId){ try{ return db?db.ref('inventory/'+itemId+'/lotes').push().key:null; }catch(e){ return null; } }
+function newLoteKey(itemId){ try{ return db?stockRef(itemId+'/lotes').push().key:null; }catch(e){ return null; } }
 // qty del item y lotes se escriben en UNA sola llamada a update() multi-ruta — nunca dos escrituras
 // separadas — para que el listener 'value' jamás vea qty actualizada sin su lote (o viceversa).
 // Esa inconsistencia a medio aplicar es lo que hacía que reconcileLotes "arreglara" una entrada real
@@ -681,10 +651,10 @@ function saveInvAndLotes(itemId,invPatch,loteUpd){
     if(db){
       var data={}; Object.keys(invPatch||{}).forEach(function(k){if(k!=='lotes')data[k]=invPatch[k];});
       Object.keys(loteUpd||{}).forEach(function(k){ data['lotes/'+k]=loteUpd[k]; });
-      track(function(){return db.ref('inventory/'+itemId).update(data);});
+      track(function(){return stockRef(itemId).update(data);});
     }
   }catch(e){}
-  localStorage.setItem('ht_inv',JSON.stringify(inv));
+  localStorage.setItem('ht_inv_'+currentAlmacen,JSON.stringify(inv));
 }
 // normaliza cada lote leído de Firebase (fecha/qty pueden faltar o venir corruptos en datos legacy)
 // para que ningún consumidor tenga que blindarse contra eso — y un lote corrupto no vuelva a bloquear la tarjeta
@@ -716,7 +686,27 @@ function reconcileLotes(x){
   } else {
     Object.assign(loteUpd,sobrantePatch(x.id,diff,'Reconciliación automática'));
   }
-  try{ if(db) track(function(){return db.ref('inventory/'+x.id+'/lotes').update(loteUpd);}); }catch(e){}
+  try{ if(db) track(function(){return stockRef(x.id+'/lotes').update(loteUpd);}); }catch(e){}
+}
+
+// cambia de almacén activo: repinta con el caché local de ese almacén y re-suscribe a su rama en Firebase
+function switchAlmacen(id){
+  if (!ALMACENES[id] || id === currentAlmacen) return;
+  currentAlmacen = id;
+  localStorage.setItem('ht_almacen', id);
+  inv = JSON.parse(localStorage.getItem('ht_inv_'+id)||'[]');
+  hist = JSON.parse(localStorage.getItem('ht_hist_'+id)||'[]');
+  lotesCache = {};
+  nextId = inv.reduce(function(m,x){return Math.max(m,x.id||0);},0)+1;
+  renderInv(); renderChips(); updatePill();
+  if (db) attachAlmacenListeners();
+  updateAlmSel();
+}
+function updateAlmSel(){
+  var sel = document.getElementById('alm-sel'); if(!sel) return;
+  sel.innerHTML = Object.keys(ALMACENES).map(function(k){
+    return '<option value="'+k+'"'+(k===currentAlmacen?' selected':'')+'>'+esc(ALMACENES[k])+'</option>';
+  }).join('');
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -751,6 +741,7 @@ function doLogin(){
   document.getElementById('bnav').style.display='flex';
   document.getElementById('fab').style.display=role==='jefe'?'flex':'none';
   document.getElementById('rbadge').textContent=role==='jefe'?'🔑 Jefe':'📦 Almacenista';
+  updateAlmSel();
   showPage('inv'); renderInv(); renderChips(); updatePill(); // Ambos roles inician en Inventario
 }
 
@@ -1060,13 +1051,13 @@ function delItem(id){
   if(!confirm('¿Eliminar este material? No se puede deshacer.'))return;
   var item=inv.find(function(x){return x.id===id;});
   inv=inv.filter(function(x){return x.id!==id;});
-  try{if(db)db.ref('inventory/'+id).remove();}catch(e){}
+  try{if(db)stockRef(id).remove();}catch(e){}
   if(item){
     var _now=new Date();
     var fecha=_now.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Hermosillo'})+' '+_now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Hermosillo'});
     saveMov({ts:Date.now(),fecha:fecha,brand:item.brand,desc:item.desc,tipo:'eliminacion',qty:item.qty||0,nota:'Material eliminado del inventario'});
   }
-  localStorage.setItem('ht_inv',JSON.stringify(inv));
+  localStorage.setItem('ht_inv_'+currentAlmacen,JSON.stringify(inv));
   closeSheet(); renderInv(); toast('Material eliminado');
 }
 
