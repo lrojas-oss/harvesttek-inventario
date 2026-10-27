@@ -28,6 +28,7 @@
     .sb-title{font-size:13px;font-weight:700;}
     .sb-sub{font-size:11px;color:var(--muted);}
     .sb-badge{display:inline-block;background:var(--green-l);color:var(--green-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-top:6px;}
+    .sb-almsel{width:100%;margin-top:8px;font-size:12px;font-weight:700;color:var(--text);background:var(--bg);border:.5px solid var(--border);border-radius:var(--rs);padding:6px 8px;font-family:inherit;}
     .sb-nav{padding:12px 10px;flex:1;}
     .snav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:var(--rs);border:none;background:transparent;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;text-align:left;transition:all .15s;}
     .snav-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
@@ -115,6 +116,7 @@
     .hdot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;}
     .hdot.entrada{background:var(--green);}
     .hdot.salida{background:var(--amber);}
+    .hdot.transferencia{background:var(--purple);}
 
     .page-content{display:none;}
     .page-content.active{display:block;}
@@ -195,6 +197,7 @@
         <div><div class="sb-title">Harvest Tek</div><div class="sb-sub">Panel Administrador</div></div>
       </div>
       <span class="sb-badge">Solo lectura</span>
+      <select id="alm-sel-admin" class="sb-almsel" onchange="switchAlmacenAdmin(this.value)"></select>
     </div>
     <div class="sb-nav">
       <button class="snav-btn active" id="snav-inventario" onclick="showSection('inventario')">
@@ -360,11 +363,21 @@
   db.ref('.info/connected').on('value', function(snap){ setSyncStatus(snap.val()===true); });
   window.addEventListener('online', function(){ db.goOffline(); db.goOnline(); });
 
+  // mismo catálogo de almacenes que almacen.html — ver comentario ahí (ALMACENES)
+  var ALMACENES = { bataques:'Bataques Cooler', santelmo:'San Telmo', quimicos:'Químicos Cooler' };
+  var currentAlmacen = localStorage.getItem('ht_almacen') || 'bataques';
+  if (!ALMACENES[currentAlmacen]) currentAlmacen = 'bataques';
+  window.ALMACENES = ALMACENES;
+  window.currentAlmacenNombre = function(){ return ALMACENES[currentAlmacen]; };
+
   var dbStarted=false;
-  function startDbListeners(){
-    if(dbStarted) return;
-    dbStarted=true;
-    db.ref('inventory').on('value', function(snap){
+  var invListenerRef=null, histListenerRef=null;
+
+  function attachAlmacenListeners(){
+    if(invListenerRef) invListenerRef.off();
+    if(histListenerRef) histListenerRef.off();
+    invListenerRef = db.ref('stock/'+currentAlmacen);
+    invListenerRef.on('value', function(snap){
       var data=snap.val();
       if(data){
         window.lotesData={};
@@ -380,11 +393,35 @@
       renderAll();
     }, function(){ setSyncStatus(false); });
 
-    db.ref('historial').on('value', function(snap){
+    histListenerRef = db.ref('movs/'+currentAlmacen);
+    histListenerRef.on('value', function(snap){
       var data=snap.val();
       window.historial=data?Object.values(data).sort(function(a,b){return(a.ts||0)-(b.ts||0);}):[];
       renderHist();
     });
+  }
+
+  window.switchAlmacenAdmin=function(id){
+    if(!ALMACENES[id]||id===currentAlmacen) return;
+    currentAlmacen=id;
+    localStorage.setItem('ht_almacen', id);
+    window.inventory=[]; window.historial=[]; window.lotesData={};
+    renderAll(); renderHist();
+    if(dbStarted) attachAlmacenListeners();
+    updateAlmSelAdmin();
+  };
+  function updateAlmSelAdmin(){
+    var sel=document.getElementById('alm-sel-admin'); if(!sel) return;
+    sel.innerHTML=Object.keys(ALMACENES).map(function(k){
+      return '<option value="'+k+'"'+(k===currentAlmacen?' selected':'')+'>'+esc(ALMACENES[k])+'</option>';
+    }).join('');
+  }
+
+  function startDbListeners(){
+    if(dbStarted) return;
+    dbStarted=true;
+    updateAlmSelAdmin();
+    attachAlmacenListeners();
   }
 
   firebase.auth().onAuthStateChanged(function(user){
@@ -428,6 +465,8 @@ window.lotesData = {};
 let tblFilter = 'all';
 let activeSection = 'dashboard';
 let expandedAdminRow = null;
+
+function almFileTag() { return (window.currentAlmacenNombre ? window.currentAlmacenNombre() : '').replace(/\s+/g, '-'); }
 
 // ── ADMIN GOOGLE AUTH ────────────────────────────────────────────────────────
 function adminGoogleSignIn(){
@@ -660,18 +699,22 @@ function renderHist() {
   const h = window.historial;
   const el = document.getElementById('hist-tbody');
   if (!h.length) { el.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--muted);font-size:14px">Sin movimientos registrados aún.</div>'; return; }
-  el.innerHTML = [...h].reverse().map(m => `
+  el.innerHTML = [...h].reverse().map(m => {
+    const esEntrada = m.tipo==='entrada' || (m.tipo==='transferencia' && m.subtipo==='entrada');
+    const extra = m.tipo==='transferencia' ? (m.subtipo==='entrada' ? `Desde ${esc(m.origen||'')}` : `A ${esc(m.destino||'')}`) : '';
+    return `
     <div class="hist-row">
       <div class="hdot ${m.tipo}" style="margin-top:5px"></div>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:600">${esc(m.desc)}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(m.brand)}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(m.brand)}${extra ? ' · ' + extra : ''}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:13px;font-weight:700;color:${m.tipo==='entrada'?'var(--green)':'var(--red)'}">${m.tipo==='entrada'?'+':'-'}${m.qty.toLocaleString()}</div>
+        <div style="font-size:13px;font-weight:700;color:${esEntrada?'var(--green)':'var(--red)'}">${esEntrada?'+':'-'}${m.qty.toLocaleString()}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px">${m.fecha}</div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function setTF(el, val) {
@@ -700,6 +743,7 @@ function exportExcel() {
   const invData = [
     ['REPORTE DE INVENTARIO — HARVEST TEK MÉXICO'],
     [`Generado: ${today}`],
+    [`Almacén: ${almFileTag().replace(/-/g,' ')}`],
     [],
     ['ID','ID Famous','Descripción','Marca','Stock actual','Stock mínimo','Uds por carga','Cargas disponibles','Estado'],
     ...window.inventory.map(i => {
@@ -718,6 +762,7 @@ function exportExcel() {
   const alertData = [
     ['ALERTAS DE STOCK — HARVEST TEK MÉXICO'],
     [`Generado: ${today}`],
+    [`Almacén: ${almFileTag().replace(/-/g,' ')}`],
     [],
     ['Descripción','Marca','Stock actual','Stock mínimo','Déficit','Estado'],
     ...alertItems.map(i => {
@@ -735,6 +780,7 @@ function exportExcel() {
   const entData = [
     ['ENTRADAS DE INVENTARIO — HARVEST TEK MÉXICO'],
     [`Generado: ${new Date().toLocaleDateString('es-MX')}`],
+    [`Almacén: ${almFileTag().replace(/-/g,' ')}`],
     [],
     ['Fecha','Marca','Descripción','Tipo entrada','Cantidad','Proveedor','No. Factura','Nota'],
     ...entradas.map(m => [
@@ -750,7 +796,7 @@ function exportExcel() {
   ws3['!cols'] = [{wch:12},{wch:22},{wch:42},{wch:22},{wch:12},{wch:28},{wch:18},{wch:28}];
   XLSX.utils.book_append_sheet(wb, ws3, 'Entradas');
 
-  XLSX.writeFile(wb, `HarvestTek_Inventario_${new Date().toISOString().split('T')[0]}.xlsx`);
+  XLSX.writeFile(wb, `HarvestTek_Inventario_${almFileTag()}_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
 function exportAlertsExcel() {
@@ -760,6 +806,7 @@ function exportAlertsExcel() {
   const data = [
     ['ALERTAS DE STOCK — HARVEST TEK MÉXICO'],
     [`Generado: ${today}`],
+    [`Almacén: ${almFileTag().replace(/-/g,' ')}`],
     ['Total alertas: ' + alertItems.length],
     [],
     ['Descripción','Marca','Stock actual','Stock mínimo','Déficit','Estado','Prioridad'],
@@ -773,7 +820,7 @@ function exportAlertsExcel() {
   const ws = XLSX.utils.aoa_to_sheet(data);
   ws['!cols'] = [{wch:45},{wch:22},{wch:14},{wch:14},{wch:12},{wch:16},{wch:12}];
   XLSX.utils.book_append_sheet(wb, ws, 'Alertas');
-  XLSX.writeFile(wb, `HarvestTek_Alertas_${new Date().toISOString().split('T')[0]}.xlsx`);
+  XLSX.writeFile(wb, `HarvestTek_Alertas_${almFileTag()}_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
 function exportHistExcel() {
@@ -781,14 +828,15 @@ function exportHistExcel() {
   const data = [
     ['HISTORIAL DE MOVIMIENTOS — HARVEST TEK MÉXICO'],
     [`Generado: ${new Date().toLocaleDateString('es-MX')}`],
+    [`Almacén: ${almFileTag().replace(/-/g,' ')}`],
     [],
     ['Fecha','Marca','Descripción','Tipo','Subtipo','Cantidad','Proveedor','No. Factura','Nota'],
-    ...window.historial.map(m => [m.fecha, m.brand, m.desc, m.tipo.toUpperCase(), m.subtipo === 'retorno' ? 'Retorno' : m.tipo === 'entrada' ? 'Compra' : 'Salida', m.qty, m.proveedor||'', m.factura||'', m.nota || ''])
+    ...window.historial.map(m => [m.fecha, m.brand, m.desc, m.tipo.toUpperCase(), m.tipo === 'transferencia' ? (m.subtipo === 'entrada' ? `Entrada (desde ${m.origen||''})` : `Salida (a ${m.destino||''})`) : m.subtipo === 'retorno' ? 'Retorno' : m.tipo === 'entrada' ? 'Compra' : 'Salida', m.qty, m.proveedor||'', m.factura||'', m.nota || ''])
   ];
   const ws = XLSX.utils.aoa_to_sheet(data);
   ws['!cols'] = [{wch:12},{wch:22},{wch:45},{wch:10},{wch:12},{wch:30}];
   XLSX.utils.book_append_sheet(wb, ws, 'Historial');
-  XLSX.writeFile(wb, `HarvestTek_Historial_${new Date().toISOString().split('T')[0]}.xlsx`);
+  XLSX.writeFile(wb, `HarvestTek_Historial_${almFileTag()}_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
 function exportCSV() {
@@ -797,7 +845,7 @@ function exportCSV() {
   const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
-  a.download = `HarvestTek_Inventario_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `HarvestTek_Inventario_${almFileTag()}_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
 }
 </script>
