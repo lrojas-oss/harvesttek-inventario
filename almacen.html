@@ -480,9 +480,12 @@ var DEFAULT_BRANDS = ['Family Fresh Farms','Ocean Mist','Baolian Farms','Fresh E
 var CHIP_LABELS = {'Family Fresh Farms':'Family Fresh','Baolian Farms':'Baolian'};
 
 // ── MARCAS (dinámico: base + cualquier marca nueva ya presente en inventario) ──
+// DEFAULT_BRANDS son las marcas históricas de Bataques Cooler — los almacenes nuevos
+// (San Telmo, Químicos Cooler) manejan materiales distintos y arrancan sin marcas heredadas.
 function getBrands(){
   var seen={}, out=[];
-  DEFAULT_BRANDS.concat(inv.map(function(x){return x.brand;})).forEach(function(b){
+  var base = currentAlmacen==='bataques' ? DEFAULT_BRANDS : [];
+  base.concat(inv.map(function(x){return x.brand;})).forEach(function(b){
     if(b && !seen[b]){ seen[b]=true; out.push(b); }
   });
   return out;
@@ -715,6 +718,8 @@ function updateAlmSel(){
 function esc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 function st(x){ if(x.qty===0)return'zero'; if(x.min>0&&x.qty<x.min)return'low'; if(x.min>0&&x.qty<x.min*1.3)return'warn'; return'ok'; }
 function stL(s){ return{ok:'Normal',warn:'Por agotarse',low:'Stock bajo',zero:'Sin stock'}[s]; }
+function unitLabel(x){ return x&&x.unidad==='litros'?'litros':'unidades'; }
+function unitShort(x){ return x&&x.unidad==='litros'?'L':'ud'; }
 function setSS(on){ var d=document.getElementById('sdot'); var l=document.getElementById('slbl'); if(!d)return; d.className='sdot'+(on?'':' off'); l.textContent=on?'En línea':'Sin conexión'; }
 function updatePill(){ var c=inv.filter(function(x){return['zero','low','warn'].indexOf(st(x))>=0;}).length; var p=document.getElementById('alert-pill'); if(!p)return; p.textContent=c; p.style.display=c>0?'inline':'none'; }
 function toast(m){ var t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2200); }
@@ -814,7 +819,7 @@ function renderInv(){
                   :'';
                 return '<div class="ilote-row"><div class="ilote-bar"></div>'+
                   '<div style="flex:1"><div class="ilote-fecha">'+esc(l.fecha.split(' ')[0])+'</div>'+(meta?'<div class="ilote-meta">'+meta+'</div>':'')+'</div>'+
-                  '<div style="font-size:15px;font-weight:800;color:var(--green);margin-right:6px">'+l.qty.toLocaleString()+'</div>'+
+                  '<div style="font-size:15px;font-weight:800;color:var(--green);margin-right:6px">'+l.qty.toLocaleString()+' '+unitShort(x)+'</div>'+
                   printBtn+'</div>';
               }).join('')+
             '</div>';
@@ -826,7 +831,7 @@ function renderInv(){
           photoHtml+'<div class="imain" onclick="toggleCard('+x.id+')">'+
             '<div class="sdot2 '+dc+'"></div>'+
             '<div style="flex:1;min-width:0"><div class="iname">'+esc(x.desc)+'</div><div class="ibrand">'+esc(x.brand)+'</div><span class="ibadge '+bc+'">'+stL(s2)+'</span></div>'+
-            '<div style="flex-shrink:0;text-align:right"><div class="iqty">'+x.qty.toLocaleString()+'</div><div class="iqlbl">unidades</div>'+cg+mn+'</div>'+
+            '<div style="flex-shrink:0;text-align:right"><div class="iqty">'+x.qty.toLocaleString()+'</div><div class="iqlbl">'+unitLabel(x)+'</div>'+cg+mn+'</div>'+
           '</div>'+
           '<div class="iacts'+(open?' open':'')+(isJ?' '+colN:'')+'">' +
             '<button class="abt ae" onclick="openSheet(\'entrada\','+x.id+')" type="button">＋ Entrada</button>'+
@@ -901,13 +906,15 @@ function openSheet(m,id){
   mode=m; item=id?inv.filter(function(x){return x.id===id;})[0]:null;
   var t=document.getElementById('stitle'),sb=document.getElementById('ssub'),bd=document.getElementById('sbody'),ok=document.getElementById('sok');
   if(m==='add'){
-    t.textContent='Agregar material'; sb.textContent='Nuevo material de empaque'; ok.textContent='Guardar'; ok.className='bok2';
+    var esQuimicos=currentAlmacen==='quimicos';
+    t.textContent='Agregar material'; sb.textContent=esQuimicos?'Nuevo material químico':'Nuevo material de empaque'; ok.textContent='Guardar'; ok.className='bok2';
     bd.innerHTML='<label class="flbl">Descripción</label><input class="finput" id="fd" placeholder="Nombre del material">'+
       '<label class="flbl">Marca</label><select class="finput" id="fb" onchange="toggleNewBrand(\'fb\',\'fbnew\')">'+brandOptionsHtml()+'<option value="__new__">➕ Nueva marca…</option></select>'+
       '<input class="finput" id="fbnew" placeholder="Nombre de la nueva marca" style="display:none">'+
+      (esQuimicos?'<label class="flbl">Unidad de medida</label><select class="finput" id="fun"><option value="unidades">Unidades</option><option value="litros">Litros</option></select>':'')+
       '<div class="frow"><div><label class="flbl">Stock inicial</label><input class="finput" id="fq" type="number" min="0" value="0"></div><div><label class="flbl">Stock mínimo</label><input class="finput" id="fm" type="number" min="0" value="0"></div></div>';
   } else if(m==='ajuste'){
-    t.textContent='Ajuste por conteo'; sb.textContent=item.desc+'\n'+item.brand+' · Stock sistema: '+item.qty; ok.textContent='Aplicar ajuste'; ok.className='bok2 blu';
+    t.textContent='Ajuste por conteo'; sb.textContent=item.desc+'\n'+item.brand+' · Stock sistema: '+item.qty+' '+unitShort(item); ok.textContent='Aplicar ajuste'; ok.className='bok2 blu';
     bd.innerHTML='<div class="adj-info">📋 Ingresa el <strong>conteo físico real</strong> que encontraste en almacén. La app calculará automáticamente la diferencia y la registrará como ajuste en el historial.</div>'+
       '<label class="flbl">Conteo físico real</label>'+
       '<div class="qctrl"><button class="qbtn" onclick="aQ(-10)" type="button">−</button><input class="qinp" id="fq" type="number" min="0" value="'+item.qty+'" oninput="previewAdj('+item.qty+')"><button class="qbtn" onclick="aQ(10);previewAdj('+item.qty+')" type="button">+</button></div>'+
@@ -929,14 +936,15 @@ function openSheet(m,id){
       '<label class="flbl">ID Famous</label><input class="finput" id="fpm" placeholder="Ej: PM6031 (en blanco si aún no se confirma)" value="'+(item.pmId||'').replace(/"/g,'&quot;')+'">'+
       '<label class="flbl">Marca</label><select class="finput" id="fbe" onchange="toggleNewBrand(\'fbe\',\'fbenew\')">'+brandOptionsHtml(item.brand)+'<option value="__new__">➕ Nueva marca…</option></select>'+
       '<input class="finput" id="fbenew" placeholder="Nombre de la nueva marca" style="display:none">'+
+      (currentAlmacen==='quimicos'?('<label class="flbl">Unidad de medida</label><select class="finput" id="fune"><option value="unidades"'+(item.unidad!=='litros'?' selected':'')+'>Unidades</option><option value="litros"'+(item.unidad==='litros'?' selected':'')+'>Litros</option></select>'):'')+
       '<label class="flbl">Stock mínimo</label><div class="qctrl"><button class="qbtn" onclick="aM(-10)" type="button">−</button><input class="qinp" id="fm" type="number" min="0" value="'+(item.min||0)+'"><button class="qbtn" onclick="aM(10)" type="button">+</button></div>'+
       '<label class="flbl">Unidades por carga</label><div class="cfg-info" style="font-size:11px;margin-bottom:8px">Unidades de este material que se usan en 1 carga de producto final.</div><div class="qctrl"><button class="qbtn" onclick="aU(-100)" type="button">−</button><input class="qinp" id="fu" type="number" min="0" value="'+(item.upc||0)+'"><button class="qbtn" onclick="aU(100)" type="button">+</button></div>'+
       '<button class="del-btn" onclick="delItem('+item.id+')" type="button">🗑 Eliminar este material</button>';
   } else if(m==='entrada'){
-    t.textContent='Registrar entrada'; sb.textContent=item.desc+'\n'+item.brand+' · Stock: '+item.qty; ok.textContent='+ Entrada'; ok.className='bok2';
+    t.textContent='Registrar entrada'; sb.textContent=item.desc+'\n'+item.brand+' · Stock: '+item.qty+' '+unitShort(item); ok.textContent='+ Entrada'; ok.className='bok2';
     bd.innerHTML='<label class="flbl">Cantidad</label><div class="qctrl"><button class="qbtn" onclick="aQ(-10)" type="button">−</button><input class="qinp" id="fq" type="number" min="1" value="0"><button class="qbtn" onclick="aQ(10)" type="button">+</button></div><div class="ret-toggle" onclick="togRet()"><div class="chkbox" id="chkbox"><svg viewBox="0 0 12 12" width="12" height="12"><polyline points="1.5 6 4.5 9.5 10.5 2.5"/></svg></div><div><div style="font-size:13px;font-weight:700;color:#854F0B">Retorno de producción</div><div style="font-size:11px;color:#854F0B;opacity:.8">Material no usado que regresa al almacén</div></div></div><div id="cfields"><label class="flbl">Proveedor <span style="color:var(--red)">*</span></label><input class="finput" id="fprov" list="dl-proveedores" placeholder="Ej: Empak de México SA de CV">'+proveedoresDatalist()+'<label class="flbl">No. factura <span style="color:var(--red)">*</span></label><input class="finput" id="ffac" placeholder="Ej: FAC-2025-00123"><label class="flbl">Nota (opcional)</label><input class="finput" id="fnota" placeholder="Nota adicional"></div><div id="rfields" style="display:none"><label class="flbl">Nota (opcional)</label><input class="finput" id="fnotar" placeholder="Ej: Sobrante línea tomate"></div>';
   } else if(m==='salida'){
-    t.textContent='Registrar salida'; sb.textContent=item.desc+'\n'+item.brand+' · Stock: '+item.qty; ok.textContent='− Salida'; ok.className='bok2 amb';
+    t.textContent='Registrar salida'; sb.textContent=item.desc+'\n'+item.brand+' · Stock: '+item.qty+' '+unitShort(item); ok.textContent='− Salida'; ok.className='bok2 amb';
     var sl=getLotesSorted(item.id);
     if(!sl.length){
       bd.innerHTML='<label class="flbl">Cantidad</label><div class="qctrl"><button class="qbtn" onclick="aQ(-10)" type="button">−</button><input class="qinp" id="fq" type="number" min="1" value="10"><button class="qbtn" onclick="aQ(10)" type="button">+</button></div><label class="flbl">Nota / destino (opcional)</label><input class="finput" id="fnota" placeholder="Ej: Línea producción">';
@@ -944,7 +952,7 @@ function openSheet(m,id){
       var lHtml=sl.map(function(l){
         return '<div class="lote-row"><div class="lote-bar"></div>'+
           '<div style="flex:1"><div class="lote-fecha">'+l.fecha.split(' ')[0]+'</div>'+
-          '<div class="lote-avail">Disponible: <strong>'+l.qty.toLocaleString()+'</strong> ud'+(l.proveedor?' · '+l.proveedor:'')+'</div></div>'+
+          '<div class="lote-avail">Disponible: <strong>'+l.qty.toLocaleString()+'</strong> '+unitShort(item)+(l.proveedor?' · '+l.proveedor:'')+'</div></div>'+
           '<input class="lote-input" type="number" min="0" max="'+l.qty+'" value="0" data-key="'+l.key+'" data-max="'+l.qty+'" oninput="updateSalidaTotal()" placeholder="0"></div>';
       }).join('');
       bd.innerHTML='<div class="fifo-hint">📋 FIFO — Indica cuánto tomar de cada lote (ordenados del más antiguo al más nuevo)</div>'+
@@ -953,7 +961,7 @@ function openSheet(m,id){
         '<label class="flbl">Nota / destino (opcional)</label><input class="finput" id="fnota" placeholder="Ej: Línea producción">';
     }
   } else if(m==='transfer'){
-    t.textContent='Transferir a otro almacén'; sb.textContent=item.desc+'\n'+item.brand+' · Stock: '+item.qty; ok.textContent='⇄ Transferir'; ok.className='bok2';
+    t.textContent='Transferir a otro almacén'; sb.textContent=item.desc+'\n'+item.brand+' · Stock: '+item.qty+' '+unitShort(item); ok.textContent='⇄ Transferir'; ok.className='bok2';
     var destinos=Object.keys(ALMACENES).filter(function(k){return k!==currentAlmacen;});
     var destSel='<label class="flbl">Almacén destino</label><select class="finput" id="ftodest">'+
       destinos.map(function(k){return '<option value="'+k+'">'+esc(ALMACENES[k])+'</option>';}).join('')+'</select>';
@@ -964,7 +972,7 @@ function openSheet(m,id){
       var lHtmlT=slT.map(function(l){
         return '<div class="lote-row"><div class="lote-bar"></div>'+
           '<div style="flex:1"><div class="lote-fecha">'+l.fecha.split(' ')[0]+'</div>'+
-          '<div class="lote-avail">Disponible: <strong>'+l.qty.toLocaleString()+'</strong> ud'+(l.proveedor?' · '+l.proveedor:'')+'</div></div>'+
+          '<div class="lote-avail">Disponible: <strong>'+l.qty.toLocaleString()+'</strong> '+unitShort(item)+(l.proveedor?' · '+l.proveedor:'')+'</div></div>'+
           '<input class="lote-input" type="number" min="0" max="'+l.qty+'" value="0" data-key="'+l.key+'" data-max="'+l.qty+'" oninput="updateSalidaTotal()" placeholder="0"></div>';
       }).join('');
       bd.innerHTML=destSel+'<div class="fifo-hint">📋 FIFO — Indica cuánto transferir de cada lote (ordenados del más antiguo al más nuevo)</div>'+
@@ -991,7 +999,8 @@ function confirmSheet(){
     if(!d){toast('Ingresa el nombre');return;}
     var brand=resolveBrand('fb','fbnew');
     if(!brand){toast('Ingresa el nombre de la nueva marca');return;}
-    var nx={id:nextId++,brand:brand,desc:d,qty:parseInt(document.getElementById('fq').value)||0,min:parseInt(document.getElementById('fm').value)||0,upc:0};
+    var unidad=currentAlmacen==='quimicos'?(document.getElementById('fun').value||'unidades'):'unidades';
+    var nx={id:nextId++,brand:brand,desc:d,qty:parseInt(document.getElementById('fq').value)||0,min:parseInt(document.getElementById('fm').value)||0,upc:0,unidad:unidad};
     inv.push(nx); saveInv(nx);
   } else if(mode==='cfg'){
     item.desc=(document.getElementById('fde').value||item.desc).trim();
@@ -999,6 +1008,7 @@ function confirmSheet(){
     var brandE=resolveBrand('fbe','fbenew');
     if(!brandE){toast('Ingresa el nombre de la nueva marca');return;}
     item.brand=brandE;
+    if(currentAlmacen==='quimicos') item.unidad=document.getElementById('fune').value||'unidades';
     item.min=parseInt(document.getElementById('fm').value)||0;
     item.upc=parseInt(document.getElementById('fu').value)||0;
     saveInv(item); toast('✅ Guardado');
@@ -1139,7 +1149,7 @@ function doTransfer(destId,totalQ,lotesUsados,nota,today){
       Object.keys(destLotes).forEach(function(k){ updates['stock/'+destId+'/'+destItemId+'/lotes/'+k]=destLotes[k]; });
     } else {
       destItemId=destItems.reduce(function(m,x){return Math.max(m,x.id||0);},0)+1;
-      updates['stock/'+destId+'/'+destItemId]={id:destItemId,brand:item.brand,desc:item.desc,qty:totalQ,min:item.min||0,upc:item.upc||0,pmId:item.pmId||'',lotes:destLotes};
+      updates['stock/'+destId+'/'+destItemId]={id:destItemId,brand:item.brand,desc:item.desc,qty:totalQ,min:item.min||0,upc:item.upc||0,pmId:item.pmId||'',unidad:item.unidad||'unidades',lotes:destLotes};
     }
 
     if(lotesUsados.length){
